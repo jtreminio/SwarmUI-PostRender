@@ -14,10 +14,15 @@ public class PostRenderExtension : Extension
 {
     public double StepPriority = 9.9f;
     public const string FeatureFlagPostRender = "feature_flag_post_render";
+    public const string FeatureFlagPostRenderCPU = "feature_flag_post_render_cpu";
+    public const string FeatureFlagPostRenderGPU = "feature_flag_post_render_gpu";
+
+    public T2IRegisteredParam<string> ProcessingMode;
 
     #region FilmGrain
     public const string FILM_GRAIN_PREFIX = "[Grain]";
     public const string NodeNameFilmGrain = "ProPostFilmGrain";
+    public const string NodeNameFilmGrainGPU = "ProPostFilmGrainGPU";
     public T2IRegisteredParam<bool> FGGrayScale;
     public T2IRegisteredParam<string> FGGrainType;
     public T2IRegisteredParam<float> FGGrainSat;
@@ -33,6 +38,7 @@ public class PostRenderExtension : Extension
     #region Vignette
     public const string VIGNETTE_PREFIX = "[Vig]";
     public const string NodeNameVignette = "ProPostVignette";
+    public const string NodeNameVignetteGPU = "ProPostVignetteGPU";
     public T2IRegisteredParam<float> VStrength;
     public T2IRegisteredParam<float> VPosX;
     public T2IRegisteredParam<float> VPosY;
@@ -41,6 +47,7 @@ public class PostRenderExtension : Extension
     #region Lut
     public const string LUT_PREFIX = "[LUT]";
     public const string NodeNameLut = "ProPostApplyLUT";
+    public const string NodeNameLutGPU = "ProPostApplyLUTGPU";
     public List<string> LutModels = [];
     public T2IRegisteredParam<float> LutStrength;
     public T2IRegisteredParam<bool> LutLogSpace;
@@ -50,6 +57,7 @@ public class PostRenderExtension : Extension
     #region RadialBlur
     public const string R_BLUR_PREFIX = "[R. Blur]";
     public const string NodeNameRadialBlur = "ProPostRadialBlur";
+    public const string NodeNameRadialBlurGPU = "ProPostRadialBlurGPU";
     public T2IRegisteredParam<float> RBStrength;
     public T2IRegisteredParam<float> RBPosX;
     public T2IRegisteredParam<float> RBPosY;
@@ -60,6 +68,7 @@ public class PostRenderExtension : Extension
     #region DMBlur
     public const string DM_BLUR_PREFIX = "[DM Blur]";
     public const string NodeNameDMBlur = "ProPostDepthMapBlur";
+    public const string NodeNameDMBlurGPU = "ProPostDepthMapBlurGPU";
     public const string NodeNameDepthMap = "DepthAnythingPreprocessor";
     public List<string> DepthModels = ["depth_anything_vitl14.pth", "depth_anything_vitb14.pth", "depth_anything_vits14.pth"];
     public T2IRegisteredParam<string> DMPreProcessorResolution;
@@ -77,21 +86,31 @@ public class PostRenderExtension : Extension
         base.OnPreLaunch();
 
     }
-    public override async void OnInit()
+    public override void OnInit()
     {
         base.OnInit();
         string path = Utilities.CombinePathWithAbsolute(Program.ServerSettings.Paths.ActualModelRoot, "luts");
         Directory.CreateDirectory(path);
         ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add("luts");
 
-        const string remoteGit = "https://github.com/jtreminio/comfyui-propost-gpu";
-        InstallableFeatures.RegisterInstallableFeature(new("ProPost", FeatureFlagPostRender, remoteGit, "jtreminio", "This will install ProPost nodes.\nDo you wish to install?"));
-        string extensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-gpu");
-        if (Directory.Exists(extensionPath))
+        const string gpuRemoteGit = "https://github.com/jtreminio/comfyui-propost-gpu";
+        const string cpuRemoteGit = "https://github.com/HellerCommaA/comfyui-propost";
+        InstallableFeatures.RegisterInstallableFeature(new("ProPost (GPU)", FeatureFlagPostRenderGPU, gpuRemoteGit, "jtreminio", "This will install GPU-accelerated ProPost nodes (requires CUDA).\nDo you wish to install?"));
+        InstallableFeatures.RegisterInstallableFeature(new("ProPost (CPU)", FeatureFlagPostRenderCPU, cpuRemoteGit, "HellerCommaA", "This will install CPU-based ProPost nodes (works on all systems including AMD).\nDo you wish to install?"));
+
+        string gpuExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-gpu");
+        if (Directory.Exists(gpuExtensionPath))
         {
-            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
-            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
+            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender, FeatureFlagPostRenderGPU]);
+            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRenderGPU]);
         }
+        string cpuExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost");
+        if (Directory.Exists(cpuExtensionPath))
+        {
+            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender, FeatureFlagPostRenderCPU]);
+            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRenderCPU]);
+        }
+
         ScriptFiles.Add("assets/pro_post.js");
 
         T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
@@ -100,7 +119,12 @@ public class PostRenderExtension : Extension
 
         ComfyUIBackendExtension.RawObjectInfoParsers.Add(rawObjectInfo =>
         {
-            if (rawObjectInfo.TryGetValue("ProPostApplyLUT", out JToken lutNode))
+            JToken lutNode = null;
+            if (!rawObjectInfo.TryGetValue("ProPostApplyLUT", out lutNode))
+            {
+                rawObjectInfo.TryGetValue("ProPostApplyLUTGPU", out lutNode);
+            }
+            if (lutNode != null)
             {
                 T2IParamTypes.ConcatDropdownValsClean(ref LutModels, lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}"));
             }
@@ -109,7 +133,19 @@ public class PostRenderExtension : Extension
         // reactor is 9.0, lets list as after
         double orderPriorityCtr = 9.1;
 
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrain] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrain] = FeatureFlagPostRenderCPU;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrainGPU] = FeatureFlagPostRenderGPU;
+
+        T2IParamGroup SettingsGroup = new("Post Render Settings", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        orderPriorityCtr += 0.1f;
+        ProcessingMode = T2IParamTypes.Register<string>(new("[PR] Processing Mode",
+            "Select processing backend: GPU (accelerated, requires CUDA) or CPU (works on all systems including AMD)",
+            "GPU",
+            GetValues: _ => ["GPU", "CPU"],
+            Group: SettingsGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: 0
+        ));
 
         #region FilmGrain
         T2IParamGroup GrainGroup = new("Film Grain", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
@@ -206,11 +242,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(FGGrayScale, out bool grayScale))
             {
-                if (!g.Features.Contains(FeatureFlagPostRender))
-                {
-                    throw new SwarmUserErrorException("Post Render parameters specified, but feature isn't installed");
-                }
-                string filmNode = g.CreateNode(NodeNameFilmGrain, new JObject
+                string nodeName = ResolveNodeName(g, NodeNameFilmGrain, NodeNameFilmGrainGPU);
+                string filmNode = g.CreateNode(nodeName, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["gray_scale"] = grayScale,
@@ -265,11 +298,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(VStrength, out float vStr))
             {
-                if (!g.Features.Contains(FeatureFlagPostRender))
-                {
-                    throw new SwarmUserErrorException("Post Render parameters specified, but feature isn't installed");
-                }
-                string vigNode = g.CreateNode(NodeNameVignette, new JObject
+                string nodeName = ResolveNodeName(g, NodeNameVignette, NodeNameVignetteGPU);
+                string vigNode = g.CreateNode(nodeName, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["intensity"] = vStr,
@@ -363,10 +393,7 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(DMBlurStrength, out float bStr))
             {
-                if (!g.Features.Contains(FeatureFlagPostRender))
-                {
-                    throw new SwarmUserErrorException("Post Render parameters specified, but feature isn't installed");
-                }
+                string nodeName = ResolveNodeName(g, NodeNameDMBlur, NodeNameDMBlurGPU);
                 string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
                 {
                     ["image"] = g.FinalImageOut,
@@ -374,7 +401,7 @@ public class PostRenderExtension : Extension
                     ["ckpt_name"] = g.UserInput.Get(DMPreProcessorModelName),
                 });
                 JArray map = [depthAnything, 0];
-                string blurNode = g.CreateNode(NodeNameDMBlur, new JObject
+                string blurNode = g.CreateNode(nodeName, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["depth_map"] = map,
@@ -446,11 +473,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(RBStrength, out float bStr))
             {
-                if (!g.Features.Contains(FeatureFlagPostRender))
-                {
-                    throw new SwarmUserErrorException("Post Render parameters specified, but feature isn't installed");
-                }
-                string blurNode = g.CreateNode(NodeNameRadialBlur, new JObject
+                string nodeName = ResolveNodeName(g, NodeNameRadialBlur, NodeNameRadialBlurGPU);
+                string blurNode = g.CreateNode(nodeName, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["blur_strength"] = bStr,
@@ -503,11 +527,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(LutName, out string lName))
             {
-                if (!g.Features.Contains(FeatureFlagPostRender))
-                {
-                    throw new SwarmUserErrorException("Post Render parameters specified, but feature isn't installed");
-                }
-                string lutNode = g.CreateNode(NodeNameLut, new JObject
+                string nodeName = ResolveNodeName(g, NodeNameLut, NodeNameLutGPU);
+                string lutNode = g.CreateNode(nodeName, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["lut_name"] = lName,
@@ -524,4 +545,15 @@ public class PostRenderExtension : Extension
 
     }
 
+    private string ResolveNodeName(WorkflowGenerator g, string cpuName, string gpuName)
+    {
+        bool useGPU = !g.UserInput.TryGet(ProcessingMode, out string mode) || mode == "GPU";
+        string featureFlag = useGPU ? FeatureFlagPostRenderGPU : FeatureFlagPostRenderCPU;
+        if (!g.Features.Contains(featureFlag))
+        {
+            string modeName = useGPU ? "GPU" : "CPU";
+            throw new SwarmUserErrorException($"Post Render ({modeName}) nodes are not installed");
+        }
+        return useGPU ? gpuName : cpuName;
+    }
 }
