@@ -84,22 +84,13 @@ public class PostRenderExtension : Extension
         Directory.CreateDirectory(path);
         ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add("luts");
 
-        const string remoteGit = "https://github.com/HellerCommaA/comfyui-propost";
-        InstallableFeatures.RegisterInstallableFeature(new("ProPost", FeatureFlagPostRender, remoteGit, "HellerCommaA", "This will install ProPost nodes.\nDo you wish to install?"));
-        string extensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost");
+        const string remoteGit = "https://github.com/jtreminio/comfyui-propost-gpu";
+        InstallableFeatures.RegisterInstallableFeature(new("ProPost", FeatureFlagPostRender, remoteGit, "jtreminio", "This will install ProPost nodes.\nDo you wish to install?"));
+        string extensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-gpu");
         if (Directory.Exists(extensionPath))
         {
-            // fix previously downloaded extension, since we switched repos branches
-            string remote = await Utilities.RunGitProcess($"remote -v", extensionPath);
-            if (remote.Contains("digitaljohn", StringComparison.OrdinalIgnoreCase))
-            {
-                await Utilities.RunGitProcess($"remote set-url origin {remoteGit}.git", extensionPath);
-            }
-            else
-            {
-                ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
-                ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
-            }
+            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
+            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
         }
         ScriptFiles.Add("assets/pro_post.js");
 
@@ -213,7 +204,6 @@ public class PostRenderExtension : Extension
         ));
         WorkflowGenerator.AddStep(g =>
         {
-            // only try one of these, if we have one we have them all
             if (g.UserInput.TryGet(FGGrayScale, out bool grayScale))
             {
                 if (!g.Features.Contains(FeatureFlagPostRender))
