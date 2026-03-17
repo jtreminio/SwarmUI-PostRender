@@ -1,6 +1,10 @@
-# SwarmUI-PostRender
+# SwarmUI-PostRenderTorched
 
-A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost](https://github.com/digitaljohn/comfyui-propost/)
+A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost Torched](https://github.com/jtreminio/comfyui-propost-torched).
+
+This version is a fork of [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender), refactored to by Torch-driven instead of CPU-driven. Benchmarks show a nearly 100% reduction in generation time penalty - while not literally free, using this extension is the closest to "free" as anything in computers can get.
+
+The rest of the original README follows:
 
 Most notably, LUTs are able to be applied during an image generation. If you're not familiar with what a LUT is, a quick 10,000 ft overview: high quality photo filters.
 
@@ -24,17 +28,17 @@ The extension will be kept up to date when `update-(your platform)` is run
 #### Manual Install (not suggested):
 1. Shutdown SwarmUI
 2. Open a cmd/terminal window in `SwarmUI\src\Extensions`
-3. Run `git clone https://github.com/HellerCommaA/SwarmUI-PostRender.git`
+3. Run `git clone https://github.com/jtreminio/SwarmUI-PostRenderTorched.git`
 4. Run `SwarmUI\update-windows.bat` to recompile SwarmUI
 5. Launch SwarmUI as usual, if the ProPost nodes are installed you should see parameter groups for them in the generate tab.
-6. Expand the `Film Grain` group and click `Install ProPost Nodes`. Click OK to confirm. then once the install is finished, restart SwarmUI.
+6. Expand the `Post Render Torched` group and click `Install ProPost (Torched) Nodes`. Click OK to confirm, then once the install is finished, restart SwarmUI.
 7. Be sure you have gone to the Generate tab then expanded the `ControlNet` group and clicked `Install` there as well!
 
 ## Updating
 1. Shutdown SwarmUI
-2. Open a cmd/terminal window in `SwarmUI\src\Extensions\SwarmUI-PostRender`
+2. Open a cmd/terminal window in `SwarmUI\src\Extensions\SwarmUI-PostRenderTorched`
 3. Run `git pull`
 4. Run `SwarmUI\update-windows.bat` to recompile SwarmUI
 
 ## Usage
-Check out [ProPost](https://github.com/digitaljohn/comfyui-propost/) for clear usage.
+Check out [ProPost Torched](https://github.com/jtreminio/comfyui-propost-torched) for clear usage.

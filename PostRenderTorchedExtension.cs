@@ -8,21 +8,16 @@ using SwarmUI.Utils;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace HellerCommaA.Extensions;
+namespace PostRenderTorched;
 
-public class PostRenderExtension : Extension
+public class PostRenderTorchedExtension : Extension
 {
     public double StepPriority = 9.9f;
-    public const string FeatureFlagPostRender = "feature_flag_post_render";
-    public const string FeatureFlagPostRenderCPU = "feature_flag_post_render_cpu";
-    public const string FeatureFlagPostRenderGPU = "feature_flag_post_render_gpu";
-
-    public T2IRegisteredParam<string> ProcessingMode;
+    public const string FeatureFlagPostRender = "feature_flag_post_render_torched";
 
     #region FilmGrain
-    public const string FILM_GRAIN_PREFIX = "[Grain]";
-    public const string NodeNameFilmGrain = "ProPostFilmGrain";
-    public const string NodeNameFilmGrainGPU = "ProPostFilmGrainGPU";
+    public const string FILM_GRAIN_PREFIX = "[Grain Torched]";
+    public const string NodeNameFilmGrainTorched = "ProPostFilmGrainTorched";
     public T2IRegisteredParam<bool> FGGrayScale;
     public T2IRegisteredParam<string> FGGrainType;
     public T2IRegisteredParam<float> FGGrainSat;
@@ -36,18 +31,16 @@ public class PostRenderExtension : Extension
     #endregion
 
     #region Vignette
-    public const string VIGNETTE_PREFIX = "[Vig]";
-    public const string NodeNameVignette = "ProPostVignette";
-    public const string NodeNameVignetteGPU = "ProPostVignetteGPU";
+    public const string VIGNETTE_PREFIX = "[Vig Torched]";
+    public const string NodeNameVignetteTorched = "ProPostVignetteTorched";
     public T2IRegisteredParam<float> VStrength;
     public T2IRegisteredParam<float> VPosX;
     public T2IRegisteredParam<float> VPosY;
     #endregion
 
     #region Lut
-    public const string LUT_PREFIX = "[LUT]";
-    public const string NodeNameLut = "ProPostApplyLUT";
-    public const string NodeNameLutGPU = "ProPostApplyLUTGPU";
+    public const string LUT_PREFIX = "[LUT Torched]";
+    public const string NodeNameLutTorched = "ProPostApplyLUTTorched";
     public List<string> LutModels = [];
     public T2IRegisteredParam<float> LutStrength;
     public T2IRegisteredParam<bool> LutLogSpace;
@@ -55,9 +48,8 @@ public class PostRenderExtension : Extension
     #endregion
 
     #region RadialBlur
-    public const string R_BLUR_PREFIX = "[R. Blur]";
-    public const string NodeNameRadialBlur = "ProPostRadialBlur";
-    public const string NodeNameRadialBlurGPU = "ProPostRadialBlurGPU";
+    public const string R_BLUR_PREFIX = "[R. Blur Torched]";
+    public const string NodeNameRadialBlurTorched = "ProPostRadialBlurTorched";
     public T2IRegisteredParam<float> RBStrength;
     public T2IRegisteredParam<float> RBPosX;
     public T2IRegisteredParam<float> RBPosY;
@@ -66,9 +58,8 @@ public class PostRenderExtension : Extension
     #endregion
 
     #region DMBlur
-    public const string DM_BLUR_PREFIX = "[DM Blur]";
-    public const string NodeNameDMBlur = "ProPostDepthMapBlur";
-    public const string NodeNameDMBlurGPU = "ProPostDepthMapBlurGPU";
+    public const string DM_BLUR_PREFIX = "[DM Blur Torched]";
+    public const string NodeNameDMBlurTorched = "ProPostDepthMapBlurTorched";
     public const string NodeNameDepthMap = "DepthAnythingPreprocessor";
     public List<string> DepthModels = ["depth_anything_vitl14.pth", "depth_anything_vitb14.pth", "depth_anything_vits14.pth"];
     public T2IRegisteredParam<string> DMPreProcessorResolution;
@@ -93,22 +84,14 @@ public class PostRenderExtension : Extension
         Directory.CreateDirectory(path);
         ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add("luts");
 
-        const string gpuRemoteGit = "https://github.com/jtreminio/comfyui-propost-gpu";
-        const string cpuRemoteGit = "https://github.com/HellerCommaA/comfyui-propost";
-        InstallableFeatures.RegisterInstallableFeature(new("ProPost (GPU)", FeatureFlagPostRenderGPU, gpuRemoteGit, "jtreminio", "This will install GPU-accelerated ProPost nodes (requires CUDA).\nDo you wish to install?"));
-        InstallableFeatures.RegisterInstallableFeature(new("ProPost (CPU)", FeatureFlagPostRenderCPU, cpuRemoteGit, "HellerCommaA", "This will install CPU-based ProPost nodes (works on all systems including AMD).\nDo you wish to install?"));
+        const string torchedRemoteGit = "https://github.com/jtreminio/comfyui-propost-torched";
+        InstallableFeatures.RegisterInstallableFeature(new("ProPost (Torched)", FeatureFlagPostRender, torchedRemoteGit, "jtreminio", "This will install torch-based ProPost nodes (works on CPU and can accelerate on CUDA).\nDo you wish to install?"));
 
-        string gpuExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-gpu");
-        if (Directory.Exists(gpuExtensionPath))
+        string torchedExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-torched");
+        if (Directory.Exists(torchedExtensionPath))
         {
-            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender, FeatureFlagPostRenderGPU]);
-            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRenderGPU]);
-        }
-        string cpuExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost");
-        if (Directory.Exists(cpuExtensionPath))
-        {
-            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender, FeatureFlagPostRenderCPU]);
-            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRenderCPU]);
+            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
+            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
         }
 
         ScriptFiles.Add("assets/pro_post.js");
@@ -119,11 +102,7 @@ public class PostRenderExtension : Extension
 
         ComfyUIBackendExtension.RawObjectInfoParsers.Add(rawObjectInfo =>
         {
-            JToken lutNode = null;
-            if (!rawObjectInfo.TryGetValue("ProPostApplyLUT", out lutNode))
-            {
-                rawObjectInfo.TryGetValue("ProPostApplyLUTGPU", out lutNode);
-            }
+            rawObjectInfo.TryGetValue(NodeNameLutTorched, out JToken lutNode);
             if (lutNode != null)
             {
                 T2IParamTypes.ConcatDropdownValsClean(ref LutModels, lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}"));
@@ -133,22 +112,17 @@ public class PostRenderExtension : Extension
         // reactor is 9.0, lets list as after
         double orderPriorityCtr = 9.1;
 
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrain] = FeatureFlagPostRenderCPU;
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrainGPU] = FeatureFlagPostRenderGPU;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrainTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameVignetteTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameDMBlurTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameRadialBlurTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameLutTorched] = FeatureFlagPostRender;
 
-        T2IParamGroup SettingsGroup = new("Post Render Settings", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup PostRenderGroup = new("Post Render Torched", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
         orderPriorityCtr += 0.1f;
-        ProcessingMode = T2IParamTypes.Register<string>(new("[PR] Processing Mode",
-            "Select processing backend: GPU (accelerated, requires CUDA) or CPU (works on all systems including AMD)",
-            "GPU",
-            GetValues: _ => ["GPU", "CPU"],
-            Group: SettingsGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: 0
-        ));
 
         #region FilmGrain
-        T2IParamGroup GrainGroup = new("Film Grain", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup GrainGroup = new("Film Grain Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
         orderPriorityCtr += 0.1f;
         int orderCounter = 0;
         FGGrayScale = T2IParamTypes.Register<bool>(new($"{FILM_GRAIN_PREFIX} Gray Scale",
@@ -242,8 +216,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(FGGrayScale, out bool grayScale))
             {
-                string nodeName = ResolveNodeName(g, NodeNameFilmGrain, NodeNameFilmGrainGPU);
-                string filmNode = g.CreateNode(nodeName, new JObject
+                RequireTorchedNodes(g);
+                string filmNode = g.CreateNode(NodeNameFilmGrainTorched, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["gray_scale"] = grayScale,
@@ -266,7 +240,7 @@ public class PostRenderExtension : Extension
         orderCounter = 0;
 
         #region Vignette
-        T2IParamGroup VigGroup = new("Vignette", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup VigGroup = new("Vignette Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
         orderPriorityCtr += 0.1f;
         VStrength = T2IParamTypes.Register<float>(new($"{VIGNETTE_PREFIX} Vignette Strength",
             "Vignette strength, lower is weaker",
@@ -298,8 +272,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(VStrength, out float vStr))
             {
-                string nodeName = ResolveNodeName(g, NodeNameVignette, NodeNameVignetteGPU);
-                string vigNode = g.CreateNode(nodeName, new JObject
+                RequireTorchedNodes(g);
+                string vigNode = g.CreateNode(NodeNameVignetteTorched, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["intensity"] = vStr,
@@ -315,7 +289,7 @@ public class PostRenderExtension : Extension
         orderCounter = 0;
 
         #region DMBlur
-        T2IParamGroup DMBlurGroup = new("Depth Map Blur", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup DMBlurGroup = new("Depth Map Blur Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
         orderPriorityCtr += 0.1f;
 
         DMPreProcessorResolution = T2IParamTypes.Register<string>(new($"{DM_BLUR_PREFIX} Depth Map Resolution",
@@ -393,7 +367,7 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(DMBlurStrength, out float bStr))
             {
-                string nodeName = ResolveNodeName(g, NodeNameDMBlur, NodeNameDMBlurGPU);
+                RequireTorchedNodes(g);
                 string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
                 {
                     ["image"] = g.FinalImageOut,
@@ -401,7 +375,7 @@ public class PostRenderExtension : Extension
                     ["ckpt_name"] = g.UserInput.Get(DMPreProcessorModelName),
                 });
                 JArray map = [depthAnything, 0];
-                string blurNode = g.CreateNode(nodeName, new JObject
+                string blurNode = g.CreateNode(NodeNameDMBlurTorched, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["depth_map"] = map,
@@ -421,7 +395,7 @@ public class PostRenderExtension : Extension
         orderCounter = 0;
 
         #region RBlur
-        T2IParamGroup rBlurGroup = new("Radial Blur", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup rBlurGroup = new("Radial Blur Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
         orderPriorityCtr += 0.1f;
         RBStrength = T2IParamTypes.Register<float>(new($"{R_BLUR_PREFIX} Strength",
             "Blur Strength, lower is weaker",
@@ -473,8 +447,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(RBStrength, out float bStr))
             {
-                string nodeName = ResolveNodeName(g, NodeNameRadialBlur, NodeNameRadialBlurGPU);
-                string blurNode = g.CreateNode(nodeName, new JObject
+                RequireTorchedNodes(g);
+                string blurNode = g.CreateNode(NodeNameRadialBlurTorched, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["blur_strength"] = bStr,
@@ -492,7 +466,7 @@ public class PostRenderExtension : Extension
         orderCounter = 0;
 
         #region Lut
-        T2IParamGroup lutGroup = new("Apply LUT", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
+        T2IParamGroup lutGroup = new("Apply LUT Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
         orderPriorityCtr += 0.1f;
 
         LutName = T2IParamTypes.Register<string>(new($"{LUT_PREFIX} Name",
@@ -527,8 +501,8 @@ public class PostRenderExtension : Extension
         {
             if (g.UserInput.TryGet(LutName, out string lName))
             {
-                string nodeName = ResolveNodeName(g, NodeNameLut, NodeNameLutGPU);
-                string lutNode = g.CreateNode(nodeName, new JObject
+                RequireTorchedNodes(g);
+                string lutNode = g.CreateNode(NodeNameLutTorched, new JObject
                 {
                     ["image"] = g.FinalImageOut,
                     ["lut_name"] = lName,
@@ -545,15 +519,11 @@ public class PostRenderExtension : Extension
 
     }
 
-    private string ResolveNodeName(WorkflowGenerator g, string cpuName, string gpuName)
+    private static void RequireTorchedNodes(WorkflowGenerator g)
     {
-        bool useGPU = !g.UserInput.TryGet(ProcessingMode, out string mode) || mode == "GPU";
-        string featureFlag = useGPU ? FeatureFlagPostRenderGPU : FeatureFlagPostRenderCPU;
-        if (!g.Features.Contains(featureFlag))
+        if (!g.Features.Contains(FeatureFlagPostRender))
         {
-            string modeName = useGPU ? "GPU" : "CPU";
-            throw new SwarmUserErrorException($"Post Render ({modeName}) nodes are not installed");
+            throw new SwarmUserErrorException("Post Render (Torched) nodes are not installed");
         }
-        return useGPU ? gpuName : cpuName;
     }
 }
