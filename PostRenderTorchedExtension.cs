@@ -1,4 +1,3 @@
-
 using Hardware.Info;
 using Newtonsoft.Json.Linq;
 using SwarmUI.Builtin_ComfyUIBackend;
@@ -14,6 +13,7 @@ public class PostRenderTorchedExtension : Extension
 {
     public double StepPriority = 9.9f;
     public const string FeatureFlagPostRender = "feature_flag_post_render_torched";
+    public static T2IParamGroup PostRenderGroup;
 
     #region FilmGrain
     public const string FILM_GRAIN_PREFIX = "[Grain Torched]";
@@ -72,146 +72,19 @@ public class PostRenderTorchedExtension : Extension
     public T2IRegisteredParam<int> DMMaskBlur;
     #endregion
 
-    public override void OnPreLaunch()
+    public override void OnPreInit()
     {
-        base.OnPreLaunch();
-
+        ScriptFiles.Add("assets/pro_post.js");
     }
+
     public override void OnInit()
     {
-        base.OnInit();
-        string path = Utilities.CombinePathWithAbsolute(Program.ServerSettings.Paths.ActualModelRoot, "luts");
-        Directory.CreateDirectory(path);
-        ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add("luts");
+        Logs.Info("PostRender Torched Extension initializing...");
 
-        const string torchedRemoteGit = "https://github.com/jtreminio/comfyui-propost-torched";
-        InstallableFeatures.RegisterInstallableFeature(new("ProPost (Torched)", FeatureFlagPostRender, torchedRemoteGit, "jtreminio", "This will install torch-based ProPost nodes (works on CPU and can accelerate on CUDA).\nDo you wish to install?"));
+        InstallComfyUINodes();
+        RegisterParameters();
 
-        string torchedExtensionPath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-torched");
-        if (Directory.Exists(torchedExtensionPath))
-        {
-            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
-            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
-        }
-
-        ScriptFiles.Add("assets/pro_post.js");
-
-        T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
-            [.. Directory.EnumerateFiles(path, "*.cube", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(path, f))]
-        );
-
-        ComfyUIBackendExtension.RawObjectInfoParsers.Add(rawObjectInfo =>
-        {
-            rawObjectInfo.TryGetValue(NodeNameLutTorched, out JToken lutNode);
-            if (lutNode != null)
-            {
-                T2IParamTypes.ConcatDropdownValsClean(ref LutModels, lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}"));
-            }
-        });
-
-        // reactor is 9.0, lets list as after
-        double orderPriorityCtr = 9.1;
-
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrainTorched] = FeatureFlagPostRender;
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameVignetteTorched] = FeatureFlagPostRender;
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameDMBlurTorched] = FeatureFlagPostRender;
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameRadialBlurTorched] = FeatureFlagPostRender;
-        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameLutTorched] = FeatureFlagPostRender;
-
-        T2IParamGroup PostRenderGroup = new("Post Render Torched", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr);
-        orderPriorityCtr += 0.1f;
-
-        #region FilmGrain
-        T2IParamGroup GrainGroup = new("Film Grain Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
-        orderPriorityCtr += 0.1f;
-        int orderCounter = 0;
-        FGGrayScale = T2IParamTypes.Register<bool>(new($"{FILM_GRAIN_PREFIX} Gray Scale",
-            "Enables grayscale mode. If true, the output will be in grayscale",
-            "false",
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGGrainType = T2IParamTypes.Register<string>(new($"{FILM_GRAIN_PREFIX} Grain Type",
-            "Sets the grain type",
-            "Fine",
-            GetValues: _ => ["Fine", "Fine Simple", "Coarse", "Coarser"],
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGGrainSat = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Grain Saturation",
-            "Grain color saturation",
-            "0.5",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGGrainPower = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Grain Power",
-            "Overall intensity of the grain effect",
-            "0.7",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGShadows = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Shadows",
-            "Intensity of grain in the shadows",
-            "0.2",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGHighs = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Highlights",
-            "Intensity of the grain in the highlights",
-            "0.2",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGScale = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Scale",
-            "Image scaling ratio. Scales the image before applying grain and scales back afterwards",
-            "1.0",
-            Min: 0.0, Max: 10.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGSharpen = T2IParamTypes.Register<int>(new($"{FILM_GRAIN_PREFIX} Sharpen",
-            "Number of sharpening passes",
-            "0",
-            Min: 0, Max: 10,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGSrcGamma = T2IParamTypes.Register<float>(new($"{FILM_GRAIN_PREFIX} Source Gamma",
-            "Gamma compensation applied to the input",
-            "1.0",
-            Min: 0.0, Max: 10.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        FGSeed = T2IParamTypes.Register<long>(new($"{FILM_GRAIN_PREFIX} Seed",
-            "Seed for the grain random generator",
-            "-1",
-            Min: -1, Max: 1000, Step: 1,
-            ViewType: ParamViewType.SEED,
-            Group: GrainGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
+        # region Film Grain
         WorkflowGenerator.AddStep(g =>
         {
             if (g.UserInput.TryGet(FGGrayScale, out bool grayScale))
@@ -219,7 +92,7 @@ public class PostRenderTorchedExtension : Extension
                 RequireTorchedNodes(g);
                 string filmNode = g.CreateNode(NodeNameFilmGrainTorched, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["gray_scale"] = grayScale,
                     ["grain_type"] = g.UserInput.Get(FGGrainType),
                     ["grain_sat"] = g.UserInput.Get(FGGrainSat),
@@ -231,43 +104,13 @@ public class PostRenderTorchedExtension : Extension
                     ["src_gamma"] = g.UserInput.Get(FGSrcGamma),
                     ["seed"] = g.UserInput.Get(FGSeed),
                 });
-                g.FinalImageOut = [filmNode, 0];
+                g.CurrentMedia = g.CurrentMedia.WithPath([filmNode, 0]);
             }
         }, StepPriority);
         StepPriority += 0.01f;
         #endregion
 
-        orderCounter = 0;
-
         #region Vignette
-        T2IParamGroup VigGroup = new("Vignette Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
-        orderPriorityCtr += 0.1f;
-        VStrength = T2IParamTypes.Register<float>(new($"{VIGNETTE_PREFIX} Vignette Strength",
-            "Vignette strength, lower is weaker",
-            "0.2",
-            Min: 0, Max: 1, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: VigGroup,
-            OrderPriority: orderCounter++
-        ));
-        VPosX = T2IParamTypes.Register<float>(new($"{VIGNETTE_PREFIX} X Position",
-            "Vignette X position, 0 is left, 0.5 is center, 1 is right",
-            "0.5",
-            Min: 0, Max: 1, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: VigGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        VPosY = T2IParamTypes.Register<float>(new($"{VIGNETTE_PREFIX} Y Position",
-            "Vignette Y position, 0 is top, 0.5 is center, 1 is bottom",
-            "0.5",
-            Min: 0, Max: 1, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: VigGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
         WorkflowGenerator.AddStep(g =>
         {
             if (g.UserInput.TryGet(VStrength, out float vStr))
@@ -275,94 +118,18 @@ public class PostRenderTorchedExtension : Extension
                 RequireTorchedNodes(g);
                 string vigNode = g.CreateNode(NodeNameVignetteTorched, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["intensity"] = vStr,
                     ["center_x"] = g.UserInput.Get(VPosX),
                     ["center_y"] = g.UserInput.Get(VPosY),
                 });
-                g.FinalImageOut = [vigNode, 0];
+                g.CurrentMedia = g.CurrentMedia.WithPath([vigNode, 0]);
             }
         }, StepPriority);
         StepPriority += 0.01f;
         #endregion
 
-        orderCounter = 0;
-
-        #region DMBlur
-        T2IParamGroup DMBlurGroup = new("Depth Map Blur Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
-        orderPriorityCtr += 0.1f;
-
-        DMPreProcessorResolution = T2IParamTypes.Register<string>(new($"{DM_BLUR_PREFIX} Depth Map Resolution",
-            "The resolution of the depth map (1024 suggested)",
-            "1024",
-            GetValues: _ => ["256", "512", "1024", "2048"],
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMPreProcessorModelName = T2IParamTypes.Register<string>(new($"{DM_BLUR_PREFIX} Depth Model",
-            "The model used for the depth map image\nModels will download automatically as needed",
-            DepthModels[0],
-            GetValues: _ => DepthModels,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMBlurStrength = T2IParamTypes.Register<float>(new($"{DM_BLUR_PREFIX} Blur Strength",
-            "The intensity of the blur",
-            "64.0",
-            Min: 0.0, Max: 256.0, Step: 1.0,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMFocalDepth = T2IParamTypes.Register<float>(new($"{DM_BLUR_PREFIX} Focal Depth",
-            "The focal depth of the blur. 1.0 is the closest, 0.0 is the farthest",
-            "1.0",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMFocusSpread = T2IParamTypes.Register<float>(new($"{DM_BLUR_PREFIX} Focus Spread",
-            "The spread of the area of focus. A larger value makes more of the image sharp",
-            "1.0",
-            Min: 1.0, Max: 8.0, Step: 0.1,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMSteps = T2IParamTypes.Register<int>(new($"{DM_BLUR_PREFIX} Steps",
-            "The number of steps to use when blurring the image. Higher numbers are slower",
-            "5",
-            Min: 1, Max: 32, Step: 1,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMFocalRange = T2IParamTypes.Register<float>(new($"{DM_BLUR_PREFIX} Focal Range",
-            "1.0 means all areas clear, 0.0 means only focal point is clear",
-            "0.0",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        DMMaskBlur = T2IParamTypes.Register<int>(new($"{DM_BLUR_PREFIX} Mask Blur",
-            "Mask blur strength (1 to 127).1 means no blurring",
-            "1",
-            Min: 1, Max: 127, Step: 2,
-            ViewType: ParamViewType.SLIDER,
-            Group: DMBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-
+        #region Depth Map Blur
         WorkflowGenerator.AddStep(g =>
         {
             if (g.UserInput.TryGet(DMBlurStrength, out float bStr))
@@ -370,14 +137,14 @@ public class PostRenderTorchedExtension : Extension
                 RequireTorchedNodes(g);
                 string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["resolution"] = Int32.Parse(g.UserInput.Get(DMPreProcessorResolution)),
                     ["ckpt_name"] = g.UserInput.Get(DMPreProcessorModelName),
                 });
                 JArray map = [depthAnything, 0];
                 string blurNode = g.CreateNode(NodeNameDMBlurTorched, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["depth_map"] = map,
                     ["blur_strength"] = g.UserInput.Get(DMBlurStrength),
                     ["focal_depth"] = g.UserInput.Get(DMFocalDepth),
@@ -386,63 +153,13 @@ public class PostRenderTorchedExtension : Extension
                     ["focal_range"] = g.UserInput.Get(DMFocalRange),
                     ["mask_blur"] = g.UserInput.Get(DMMaskBlur),
                 });
-                g.FinalImageOut = [blurNode, 0];
+                g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
             }
         }, StepPriority);
         StepPriority += 0.01f;
         #endregion
 
-        orderCounter = 0;
-
-        #region RBlur
-        T2IParamGroup rBlurGroup = new("Radial Blur Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
-        orderPriorityCtr += 0.1f;
-        RBStrength = T2IParamTypes.Register<float>(new($"{R_BLUR_PREFIX} Strength",
-            "Blur Strength, lower is weaker",
-            "64",
-            Min: 0, Max: 256, Step: 1,
-            ViewType: ParamViewType.SLIDER,
-            Group: rBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        RBPosX = T2IParamTypes.Register<float>(new($"{R_BLUR_PREFIX} X Position",
-            "Blur X position, 0 is left, 0.5 is center, 1 is right",
-            "0.5",
-            Min: 0, Max: 1, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: rBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        RBPosY = T2IParamTypes.Register<float>(new($"{R_BLUR_PREFIX} Y Position",
-            "Blur Y position, 0 is top, 0.5 is center, 1 is bottom",
-            "0.5",
-            Min: 0, Max: 1, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: rBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        RBFocusSpread = T2IParamTypes.Register<float>(new($"{R_BLUR_PREFIX} Focus Spread",
-            "Spread of the area of focus, higher is sharper",
-            "1",
-            Min: 0.1, Max: 8.0, Step: 0.1,
-            ViewType: ParamViewType.SLIDER,
-            Group: rBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        RBSteps = T2IParamTypes.Register<int>(new($"{R_BLUR_PREFIX} Steps",
-            "Number of steps to use when bluring image, higher is slower",
-            "5",
-            Min: 1, Max: 32, Step: 1,
-            ViewType: ParamViewType.SLIDER,
-            Group: rBlurGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-
+        #region Radial Blur
         WorkflowGenerator.AddStep(g =>
         {
             if (g.UserInput.TryGet(RBStrength, out float bStr))
@@ -450,53 +167,20 @@ public class PostRenderTorchedExtension : Extension
                 RequireTorchedNodes(g);
                 string blurNode = g.CreateNode(NodeNameRadialBlurTorched, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["blur_strength"] = bStr,
                     ["center_x"] = g.UserInput.Get(RBPosX),
                     ["center_y"] = g.UserInput.Get(RBPosY),
                     ["focus_spread"] = g.UserInput.Get(RBFocusSpread),
                     ["steps"] = g.UserInput.Get(RBSteps),
                 });
-                g.FinalImageOut = [blurNode, 0];
+                g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
             }
         }, StepPriority);
         StepPriority += 0.01f;
         #endregion
 
-        orderCounter = 0;
-
         #region Lut
-        T2IParamGroup lutGroup = new("Apply LUT Torched", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: orderPriorityCtr, Parent: PostRenderGroup);
-        orderPriorityCtr += 0.1f;
-
-        LutName = T2IParamTypes.Register<string>(new($"{LUT_PREFIX} Name",
-            "LUT to apply to the image.\n" +
-            $"To add new LUTs place them in SwarmUI/Models/luts",
-            "None",
-            IgnoreIf: "None",
-            GetValues: _ => LutModels,
-            Group: lutGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        LutStrength = T2IParamTypes.Register<float>(new($"{LUT_PREFIX} LUT Strength",
-            "The strength of the LUT effect",
-            "1.0",
-            Min: 0.0, Max: 1.0, Step: 0.01,
-            ViewType: ParamViewType.SLIDER,
-            Group: lutGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-        LutLogSpace = T2IParamTypes.Register<bool>(new($"{LUT_PREFIX} LOG Space",
-            "If true, the image is processed in LOG color space",
-            "false",
-            ViewType: ParamViewType.NORMAL,
-            Group: lutGroup,
-            FeatureFlag: FeatureFlagPostRender,
-            OrderPriority: orderCounter++
-        ));
-
         WorkflowGenerator.AddStep(g =>
         {
             if (g.UserInput.TryGet(LutName, out string lName))
@@ -504,19 +188,471 @@ public class PostRenderTorchedExtension : Extension
                 RequireTorchedNodes(g);
                 string lutNode = g.CreateNode(NodeNameLutTorched, new JObject
                 {
-                    ["image"] = g.FinalImageOut,
+                    ["image"] = g.CurrentMedia.Path,
                     ["lut_name"] = lName,
                     ["log"] = g.UserInput.Get(LutLogSpace),
                     ["strength"] = g.UserInput.Get(LutStrength),
                 });
-                g.FinalImageOut = [lutNode, 0];
+                g.CurrentMedia = g.CurrentMedia.WithPath([lutNode, 0]);
             }
         }, StepPriority);
         StepPriority += 0.01f;
         #endregion
+    }
 
-        orderCounter = 0;
+    private void InstallComfyUINodes()
+    {
+        string path = Utilities.CombinePathWithAbsolute(Program.ServerSettings.Paths.ActualModelRoot, "luts");
+        Directory.CreateDirectory(path);
+        ComfyUISelfStartBackend.FoldersToForwardInComfyPath.Add("luts");
 
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameFilmGrainTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameVignetteTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameDMBlurTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameRadialBlurTorched] = FeatureFlagPostRender;
+        ComfyUIBackendExtension.NodeToFeatureMap[NodeNameLutTorched] = FeatureFlagPostRender;
+        InstallableFeatures.RegisterInstallableFeature(new(
+            DisplayName: "ProPost (Torched)",
+            ID: "propost_torched",
+            URL: "https://github.com/jtreminio/comfyui-propost-torched",
+            Author: "jtreminio",
+            Notice: "This will install the ProPost (Torched) custom nodes.\nDo you wish to install?",
+            SkipPipCache: false,
+            AutoInstall: false
+        ));
+
+        string torchedExtensionPath = Utilities.CombinePathWithAbsolute(
+            Environment.CurrentDirectory, 
+            $"{ComfyUIBackendExtension.Folder}/DLNodes/comfyui-propost-torched"
+        );
+        if (Directory.Exists(torchedExtensionPath))
+        {
+            ComfyUIBackendExtension.FeaturesSupported.UnionWith([FeatureFlagPostRender]);
+            ComfyUIBackendExtension.FeaturesDiscardIfNotFound.UnionWith([FeatureFlagPostRender]);
+        }
+
+        T2IParamTypes.ConcatDropdownValsClean(ref LutModels,
+            [.. Directory.EnumerateFiles(path, "*.cube", SearchOption.AllDirectories).Select(f => Path.GetRelativePath(path, f)).OrderBy(f => f)]
+        );
+
+        ComfyUIBackendExtension.RawObjectInfoParsers.Add(rawObjectInfo =>
+        {
+            rawObjectInfo.TryGetValue(NodeNameLutTorched, out JToken lutNode);
+            if (lutNode != null)
+            {
+                T2IParamTypes.ConcatDropdownValsClean(ref LutModels, lutNode["input"]["required"]["lut_name"][0].Select(m => $"{m}"));
+            }
+        });
+    }
+
+    private void RegisterParameters()
+    {
+        // reactor is 9.0, lets list as after
+        double orderPriorityCtr = 9.1;
+
+        PostRenderGroup = new(
+            Name: "Post Render Torched",
+            Toggles: false,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr
+        );
+
+        orderPriorityCtr += 0.1f;
+
+        RegisterParametersFilmGrain(ref orderPriorityCtr);
+        RegisterParametersVignette(ref orderPriorityCtr);
+        RegisterParametersDepthMapBlur(ref orderPriorityCtr);
+        RegisterParametersRadialBlur(ref orderPriorityCtr);
+        RegisterParametersLUT(ref orderPriorityCtr);
+    }
+
+    private void RegisterParametersFilmGrain(ref double orderPriorityCtr)
+    {
+        T2IParamGroup GrainGroup = new(
+            Name: "Film Grain Torched",
+            Toggles: true,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr,
+            Parent: PostRenderGroup
+        );
+
+        orderPriorityCtr += 0.1f;
+        int orderCounter = 0;
+
+        FGGrayScale = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "[Torched] Film Grain Gray Scale",
+            Description: "Enables grayscale mode. If true, the output will be in grayscale",
+            Default: "false",
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGGrainType = T2IParamTypes.Register<string>(new T2IParamType(
+            Name: "[Torched] Film Grain Type",
+            Description: "Sets the grain type",
+            Default: "Fine Simple",
+            GetValues: _ => ["Fine", "Fine Simple", "Coarse", "Coarser"],
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGGrainSat = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Saturation",
+            Description: "Grain color saturation",
+            Default: "0.5",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGGrainPower = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Power",
+            Description: "Overall intensity of the grain effect",
+            Default: "0.7",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGShadows = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Shadows",
+            Description: "Intensity of grain in the shadows",
+            Default: "0.2",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGHighs = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Highlights",
+            Description: "Intensity of the grain in the highlights",
+            Default: "0.2",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGScale = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Scale",
+            Description: "Image scaling ratio. Scales the image before applying grain and scales back afterwards",
+            Default: "1.0",
+            Min: 0.0, Max: 10.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGSharpen = T2IParamTypes.Register<int>(new T2IParamType(
+            Name: "[Torched] Film Grain Sharpen",
+            Description: "Number of sharpening passes",
+            Default: "0",
+            Min: 0, Max: 10,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGSrcGamma = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Film Grain Source Gamma",
+            Description: "Gamma compensation applied to the input",
+            Default: "1.0",
+            Min: 0.0, Max: 10.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        FGSeed = T2IParamTypes.Register<long>(new T2IParamType(
+            Name: "[Torched] Film Grain Seed",
+            Description: "Seed for the grain random generator",
+            Default: "-1",
+            Min: -1, Max: 1000, Step: 1,
+            ViewType: ParamViewType.SEED,
+            Group: GrainGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+    }
+
+    private void RegisterParametersVignette(ref double orderPriorityCtr)
+    {
+        T2IParamGroup VigGroup = new(
+            Name: "Vignette Torched",
+            Toggles: true,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr,
+            Parent: PostRenderGroup
+        );
+
+        orderPriorityCtr += 0.1f;
+        int orderCounter = 0;
+
+        VStrength = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Vignette Strength",
+            Description: "Vignette strength, lower is weaker",
+            Default: "0.2",
+            Min: 0, Max: 1, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: VigGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        VPosX = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Vignette X Position",
+            Description: "Vignette X position, 0 is left, 0.5 is center, 1 is right",
+            Default: "0.5",
+            Min: 0, Max: 1, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: VigGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        VPosY = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Vignette Y Position",
+            Description: "Vignette Y position, 0 is top, 0.5 is center, 1 is bottom",
+            Default: "0.5",
+            Min: 0, Max: 1, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: VigGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+    }
+
+    private void RegisterParametersDepthMapBlur(ref double orderPriorityCtr)
+    {
+        T2IParamGroup DMBlurGroup = new(
+            Name: "Depth Map Blur Torched",
+            Toggles: true,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr,
+            Parent: PostRenderGroup
+        );
+
+        orderPriorityCtr += 0.1f;
+        int orderCounter = 0;
+
+        DMPreProcessorResolution = T2IParamTypes.Register<string>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Resolution",
+            Description: "The resolution of the depth map (1024 suggested)",
+            Default: "1024",
+            GetValues: _ => ["256", "512", "1024", "2048"],
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMPreProcessorModelName = T2IParamTypes.Register<string>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Model",
+            Description: "The model used for the depth map image\nModels will download automatically as needed",
+            Default: DepthModels[0],
+            GetValues: _ => DepthModels,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMBlurStrength = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Strength",
+            Description: "The intensity of the blur",
+            Default: "64.0",
+            Min: 0.0, Max: 256.0, Step: 1.0,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMFocalDepth = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Focal Depth",
+            Description: "The focal depth of the blur. 1.0 is the closest, 0.0 is the farthest",
+            Default: "1.0",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMFocusSpread = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Focus Spread",
+            Description: "The spread of the area of focus. A larger value makes more of the image sharp",
+            Default: "1.0",
+            Min: 1.0, Max: 8.0, Step: 0.1,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMSteps = T2IParamTypes.Register<int>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Steps",
+            Description: "The number of steps to use when blurring the image. Higher numbers are slower",
+            Default: "5",
+            Min: 1, Max: 32, Step: 1,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMFocalRange = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Focal Range",
+            Description: "1.0 means all areas clear, 0.0 means only focal point is clear",
+            Default: "0.0",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        DMMaskBlur = T2IParamTypes.Register<int>(new T2IParamType(
+            Name: "[Torched] Depth Map Blur Mask Blur",
+            Description: "Mask blur strength (1 to 127).1 means no blurring",
+            Default: "1",
+            Min: 1, Max: 127, Step: 2,
+            ViewType: ParamViewType.SLIDER,
+            Group: DMBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+    }
+
+    private void RegisterParametersRadialBlur(ref double orderPriorityCtr)
+    {
+        T2IParamGroup rBlurGroup = new(
+            Name: "Radial Blur Torched",
+            Toggles: true,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr,
+            Parent: PostRenderGroup
+        );
+        
+        orderPriorityCtr += 0.1f;
+        int orderCounter = 0;
+
+        RBStrength = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Radial Blur Strength",
+            Description: "Blur Strength, lower is weaker",
+            Default: "64",
+            Min: 0, Max: 256, Step: 1,
+            ViewType: ParamViewType.SLIDER,
+            Group: rBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        RBPosX = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Radial Blur X Position",
+            Description: "Blur X position, 0 is left, 0.5 is center, 1 is right",
+            Default: "0.5",
+            Min: 0, Max: 1, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: rBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        RBPosY = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Radial Blur Y Position",
+            Description: "Blur Y position, 0 is top, 0.5 is center, 1 is bottom",
+            Default: "0.5",
+            Min: 0, Max: 1, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: rBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        RBFocusSpread = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] Radial Blur Focus Spread",
+            Description: "Spread of the area of focus, higher is sharper",
+            Default: "1",
+            Min: 0.1, Max: 8.0, Step: 0.1,
+            ViewType: ParamViewType.SLIDER,
+            Group: rBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        RBSteps = T2IParamTypes.Register<int>(new T2IParamType(
+            Name: "[Torched] Radial Blur Steps",
+            Description: "Number of steps to use when bluring image, higher is slower",
+            Default: "5",
+            Min: 1, Max: 32, Step: 1,
+            ViewType: ParamViewType.SLIDER,
+            Group: rBlurGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+    }
+
+    private void RegisterParametersLUT(ref double orderPriorityCtr)
+    {
+        T2IParamGroup lutGroup = new(
+            Name: "LUT Torched",
+            Toggles: true,
+            Open: false,
+            IsAdvanced: false,
+            OrderPriority: orderPriorityCtr,
+            Parent: PostRenderGroup
+        );
+
+        orderPriorityCtr += 0.1f;
+        int orderCounter = 0;
+
+        LutName = T2IParamTypes.Register<string>(new T2IParamType(
+            Name: "[Torched] LUT Name",
+            Description: "LUT to apply to the image.\nTo add new LUTs place them in SwarmUI/Models/luts",
+            Default: "None",
+            IgnoreIf: "None",
+            GetValues: _ => LutModels,
+            Group: lutGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        LutStrength = T2IParamTypes.Register<float>(new T2IParamType(
+            Name: "[Torched] LUT Strength",
+            Description: "The strength of the LUT effect",
+            Default: "1.0",
+            Min: 0.0, Max: 1.0, Step: 0.01,
+            ViewType: ParamViewType.SLIDER,
+            Group: lutGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
+
+        LutLogSpace = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "[Torched] LUT LOG Space",
+            Description: "If true, the image is processed in LOG color space",
+            Default: "false",
+            ViewType: ParamViewType.NORMAL,
+            Group: lutGroup,
+            FeatureFlag: FeatureFlagPostRender,
+            OrderPriority: orderCounter++
+        ));
     }
 
     private static void RequireTorchedNodes(WorkflowGenerator g)
