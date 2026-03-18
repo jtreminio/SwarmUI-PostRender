@@ -84,4 +84,4 @@ Then compare with both PostRender and PostRenderTorched using:
 
 **195.0 total generation time, 6.3% increase**
 
-As shown, [jtreminio/SwarmUI-PostRenderTorched](https://github.com/jtreminio/SwarmUI-PostRenderTorched) is approximately **74% faster** compared to [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender).
+As shown, [jtreminio/SwarmUI-PostRenderTorched](https://github.com/jtreminio/SwarmUI-PostRenderTorched) is approximately **74% faster** in the post-processing stage when compared to [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender).
