@@ -82,8 +82,8 @@ class ProPostVignette(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="ProPostVignetteTorched",
-            display_name="ProPost Vignette (Torched)",
+            node_id="ProPostVignette",
+            display_name="ProPost Vignette",
             category="Pro Post/Camera Effects",
             inputs=[
                 io.Image.Input("image"),
@@ -130,8 +130,8 @@ class ProPostFilmGrain(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="ProPostFilmGrainTorched",
-            display_name="ProPost Film Grain (Torched)",
+            node_id="ProPostFilmGrain",
+            display_name="ProPost Film Grain",
             category="Pro Post/Camera Effects",
             inputs=[
                 io.Image.Input("image"),
@@ -172,8 +172,8 @@ class ProPostRadialBlur(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="ProPostRadialBlurTorched",
-            display_name="ProPost Radial Blur (Torched)",
+            node_id="ProPostRadialBlur",
+            display_name="ProPost Radial Blur",
             category="Pro Post/Blur Effects",
             inputs=[
                 io.Image.Input("image"),
@@ -219,8 +219,8 @@ class ProPostDepthMapBlur(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="ProPostDepthMapBlurTorched",
-            display_name="ProPost Depth Map Blur (Torched)",
+            node_id="ProPostDepthMapBlur",
+            display_name="ProPost Depth Map Blur",
             category="Pro Post/Blur Effects",
             description=(
                 "Applies blur based on a depth map while returning both the blurred image "
@@ -290,8 +290,8 @@ class ProPostApplyLUT(io.ComfyNode):
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
-            node_id="ProPostApplyLUTTorched",
-            display_name="ProPost Apply LUT (Torched)",
+            node_id="ProPostApplyLUT",
+            display_name="ProPost Apply LUT",
             category="Pro Post/Color Grading",
             inputs=[
                 io.Image.Input("image"),
@@ -359,19 +359,19 @@ async def comfy_entrypoint() -> ComfyExtension:
 
 
 NODE_CLASS_MAPPINGS = {
-    "ProPostVignetteTorched": ProPostVignette,
-    "ProPostFilmGrainTorched": ProPostFilmGrain,
-    "ProPostRadialBlurTorched": ProPostRadialBlur,
-    "ProPostDepthMapBlurTorched": ProPostDepthMapBlur,
-    "ProPostApplyLUTTorched": ProPostApplyLUT,
+    "ProPostVignette": ProPostVignette,
+    "ProPostFilmGrain": ProPostFilmGrain,
+    "ProPostRadialBlur": ProPostRadialBlur,
+    "ProPostDepthMapBlur": ProPostDepthMapBlur,
+    "ProPostApplyLUT": ProPostApplyLUT,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "ProPostVignetteTorched": "ProPost Vignette (Torched)",
-    "ProPostFilmGrainTorched": "ProPost Film Grain (Torched)",
-    "ProPostRadialBlurTorched": "ProPost Radial Blur (Torched)",
-    "ProPostDepthMapBlurTorched": "ProPost Depth Map Blur (Torched)",
-    "ProPostApplyLUTTorched": "ProPost Apply LUT (Torched)",
+    "ProPostVignette": "ProPost Vignette",
+    "ProPostFilmGrain": "ProPost Film Grain",
+    "ProPostRadialBlur": "ProPost Radial Blur",
+    "ProPostDepthMapBlur": "ProPost Depth Map Blur",
+    "ProPostApplyLUT": "ProPost Apply LUT",
 }
 
 __all__ = [
