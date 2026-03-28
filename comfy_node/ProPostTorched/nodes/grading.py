@@ -2,9 +2,12 @@ import torch
 from comfy_api.latest import io
 
 from ..data.grading_presets import (
+    COLOR_WARPER_CUSTOM_PRESET,
     COLOR_WARPER_PRESETS,
+    COLOR_WARPER_PRESET_DEFAULT,
     COLOR_WARPER_PRESET_NAMES,
     SKIN_TONE_PRESETS,
+    SKIN_TONE_PRESET_DEFAULT,
     SKIN_TONE_PRESET_NAMES,
 )
 from ..utils import processing as processing_utils
@@ -36,7 +39,7 @@ class ProPostColorWarper(io.ComfyNode):
             category="Pro Post/Color Grading",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("preset", options=COLOR_WARPER_PRESET_NAMES, default="Custom (manual)"),
+                io.Combo.Input("preset", options=COLOR_WARPER_PRESET_NAMES, default=COLOR_WARPER_PRESET_DEFAULT),
                 io.Float.Input("source_hue", default=0.0, min=0.0, max=360.0, step=1.0),
                 io.Float.Input("source_hue_width", default=60.0, min=10.0, max=180.0, step=1.0),
                 io.Float.Input("source_sat_min", default=0.0, min=0.0, max=1.0, step=0.01),
@@ -74,7 +77,7 @@ class ProPostColorWarper(io.ComfyNode):
         if strength <= 0.0:
             return io.NodeOutput(image)
 
-        use_preset = preset != "Custom (manual)" and preset in COLOR_WARPER_PRESETS
+        use_preset = preset != COLOR_WARPER_CUSTOM_PRESET and preset in COLOR_WARPER_PRESETS
         if not use_preset and abs(hue_shift) < 0.1 and abs(sat_shift) < 0.5:
             return io.NodeOutput(image)
 
@@ -131,7 +134,7 @@ class ProPostSkinToneUniformity(io.ComfyNode):
             category="Pro Post/Color Grading",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("preset", options=SKIN_TONE_PRESET_NAMES, default="Universal - all skin tones"),
+                io.Combo.Input("preset", options=SKIN_TONE_PRESET_NAMES, default=SKIN_TONE_PRESET_DEFAULT),
                 io.Float.Input("amount", default=60.0, min=0.0, max=100.0, step=1.0),
                 io.Float.Input("smoothing_radius", default=60.0, min=10.0, max=100.0, step=1.0),
                 io.Float.Input("hue_center", default=25.0, min=0.0, max=360.0, step=1.0),

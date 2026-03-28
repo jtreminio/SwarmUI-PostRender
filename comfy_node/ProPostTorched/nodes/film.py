@@ -3,14 +3,17 @@ from comfy_api.latest import io
 
 from ..data.film_stocks import (
     BW_STOCKS,
+    BW_STOCK_DEFAULT,
     BW_STOCK_NAMES,
     COLOR_FILTERS,
     COLOR_STOCKS,
+    COLOR_STOCK_DEFAULT,
     COLOR_STOCK_NAMES,
+    FILTER_DEFAULT,
     FILTER_NAMES,
     CurveParams,
 )
-from ..data.print_stocks import PRINT_STOCKS, PRINT_STOCK_NAMES
+from ..data.print_stocks import PRINT_STOCK_DEFAULT, PRINT_STOCKS, PRINT_STOCK_NAMES
 from ..utils.color_ops import (
     adjust_saturation,
     apply_per_channel_curves,
@@ -64,7 +67,7 @@ class ProPostPrintStock(io.ComfyNode):
             category="Pro Post/Film",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("print_stock", options=PRINT_STOCK_NAMES, default="Kodak 2383"),
+                io.Combo.Input("print_stock", options=PRINT_STOCK_NAMES, default=PRINT_STOCK_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=0.0, max=1.0, step=0.05),
                 io.Float.Input("contrast_boost", default=0.0, min=0.0, max=1.0, step=0.05),
             ],
@@ -115,8 +118,8 @@ class ProPostFilmStockBW(io.ComfyNode):
             category="Pro Post/Film",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("film_stock", options=BW_STOCK_NAMES, default="Ilford HP5 Plus 400"),
-                io.Combo.Input("color_filter", options=FILTER_NAMES, default="None"),
+                io.Combo.Input("film_stock", options=BW_STOCK_NAMES, default=BW_STOCK_DEFAULT),
+                io.Combo.Input("color_filter", options=FILTER_NAMES, default=FILTER_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=0.0, max=1.0, step=0.05),
                 io.Float.Input("contrast", default=0.0, min=-1.0, max=1.0, step=0.05),
                 io.Float.Input("exposure_shift", default=0.0, min=-3.0, max=3.0, step=0.25),
@@ -166,7 +169,7 @@ class ProPostFilmStockColor(io.ComfyNode):
             category="Pro Post/Film",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("film_stock", options=COLOR_STOCK_NAMES, default="Neg / Kodak Portra 400"),
+                io.Combo.Input("film_stock", options=COLOR_STOCK_NAMES, default=COLOR_STOCK_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=0.0, max=1.0, step=0.05),
                 io.Float.Input("override_toe", default=-1.0, min=-1.0, max=5.0, step=0.1),
                 io.Float.Input("override_shoulder", default=-1.0, min=-1.0, max=5.0, step=0.1),

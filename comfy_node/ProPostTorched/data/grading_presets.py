@@ -1,5 +1,12 @@
 from dataclasses import dataclass
 
+from .catalog_loader import (
+    get_catalog_default,
+    get_catalog_list,
+    validate_catalog_default,
+    validate_catalog_entries,
+)
+
 
 @dataclass(frozen=True)
 class ColorWarperRegion:
@@ -99,7 +106,21 @@ COLOR_WARPER_PRESETS = {
     ),
 }
 
-COLOR_WARPER_PRESET_NAMES = ["Custom (manual)"] + list(COLOR_WARPER_PRESETS.keys())
+COLOR_WARPER_CUSTOM_PRESET = "Custom (manual)"
+COLOR_WARPER_PRESET_NAMES = get_catalog_list("grading_options.json", "color_warper_presets")
+if not COLOR_WARPER_PRESET_NAMES or COLOR_WARPER_PRESET_NAMES[0] != COLOR_WARPER_CUSTOM_PRESET:
+    raise ValueError("Color warper presets must keep Custom (manual) as the first entry")
+validate_catalog_entries(
+    "color warper presets",
+    COLOR_WARPER_PRESET_NAMES[1:],
+    COLOR_WARPER_PRESETS.keys(),
+)
+COLOR_WARPER_PRESET_DEFAULT = validate_catalog_default(
+    "color warper preset",
+    get_catalog_default("grading_options.json", "color_warper_preset"),
+    COLOR_WARPER_PRESET_NAMES,
+)
+
 SKIN_TONE_CUSTOM_PRESET = "Custom"
 SKIN_TONE_PRESETS = {
     "Universal - all skin tones": SkinTonePreset("Universal - all skin tones", 25.0, 45.0, 0.08, 0.85, 0.10, 0.92),
@@ -109,4 +130,16 @@ SKIN_TONE_PRESETS = {
     "Warm / Golden skin": SkinTonePreset("Warm / Golden skin", 30.0, 35.0, 0.15, 0.80, 0.20, 0.85),
     "Cool / Pink skin": SkinTonePreset("Cool / Pink skin", 12.0, 30.0, 0.10, 0.70, 0.30, 0.90),
 }
-SKIN_TONE_PRESET_NAMES = list(SKIN_TONE_PRESETS.keys()) + [SKIN_TONE_CUSTOM_PRESET]
+SKIN_TONE_PRESET_NAMES = get_catalog_list("grading_options.json", "skin_tone_presets")
+if not SKIN_TONE_PRESET_NAMES or SKIN_TONE_PRESET_NAMES[-1] != SKIN_TONE_CUSTOM_PRESET:
+    raise ValueError("Skin tone presets must keep Custom as the final entry")
+validate_catalog_entries(
+    "skin tone presets",
+    SKIN_TONE_PRESET_NAMES[:-1],
+    SKIN_TONE_PRESETS.keys(),
+)
+SKIN_TONE_PRESET_DEFAULT = validate_catalog_default(
+    "skin tone preset",
+    get_catalog_default("grading_options.json", "skin_tone_preset"),
+    SKIN_TONE_PRESET_NAMES,
+)

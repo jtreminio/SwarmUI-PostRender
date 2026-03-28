@@ -1,0 +1,11 @@
+{
+  "defaults": {
+    "print_stock": "Kodak 2383"
+  },
+  "print_stocks": [
+    "Fuji 3510",
+    "Fuji 3513",
+    "Kodak 2383",
+    "Kodak 2393"
+  ]
+}

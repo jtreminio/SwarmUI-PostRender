@@ -18,6 +18,70 @@ Additional functionality not present in the original comfyu-propost extension in
     * Skin Tone Uniformity
     * Chromatic Aberration
 
+# SwarmUI Features
+
+The SwarmUI side of this extension now exposes all of the new ProPostTorched features:
+
+* Lens Profile
+* Lens Distortion
+* Chromatic Aberration
+* Depth Map Blur
+* Radial Blur
+* Film Stock (Color)
+* LUT
+* Color Warper
+* Skin Tone Uniformity
+* Print Stock
+* Film Stock (B&W)
+* Film Grain
+* Vignette
+
+# Recommended SwarmUI Order
+
+The UI registration order now matches the intended processing order:
+
+1. Lens Profile
+2. Lens Distortion
+3. Chromatic Aberration
+4. Depth Map Blur
+5. Radial Blur
+6. Film Stock (Color)
+7. LUT
+8. Color Warper
+9. Skin Tone Uniformity
+10. Print Stock
+11. Film Stock (B&W)
+12. Film Grain
+13. Vignette
+
+This keeps lens resampling first, blur before grading, LUT as the global look stage, Print Stock as the later print/mastering stage, and Film Grain plus Vignette as finishing effects.
+
+# Important Notes
+
+* Lens Profile intentionally overlaps with Lens Distortion and Chromatic Aberration. Treat Lens Profile as the preset umbrella option and the other two as additive manual controls.
+* Film Stock (B&W) is intentionally placed late in the chain as a monochrome finish, so later color stages do not reintroduce color.
+
+# Shared Option Catalogs
+
+The cross-language dropdown catalogs for the new film, print, lens, and grading features now live in shared JSON files:
+
+* `comfy_node/ProPostTorched/data/film_options.json`
+* `comfy_node/ProPostTorched/data/print_options.json`
+* `comfy_node/ProPostTorched/data/lens_options.json`
+* `comfy_node/ProPostTorched/data/grading_options.json`
+
+Both the Python node schemas and the SwarmUI C# feature dropdowns read these files directly. The numeric stock curves, lens profile data, and grading preset bodies remain in Python.
+
+# Manual Verification
+
+After updating the extension:
+
+* Refresh or restart SwarmUI and ComfyUI so the updated node schemas and JSON catalogs are reloaded.
+* Confirm the new SwarmUI dropdowns populate from the shared JSON-backed data without depending on backend object-info for these eight new features.
+* Confirm `Lens Profile Mode` keeps `Add Aberrations` before `Correct Aberrations`.
+* Confirm `Color Warper Preset` keeps `Custom (manual)` first and `Skin Tone Uniformity Preset` keeps `Custom` last.
+* Confirm `Film Stock (B&W)` and `Skin Tone Uniformity` still behave correctly in the reordered post-render chain.
+
 # Benefits over original [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender)
 
 In practice, this extension gives you a much more SwarmUI-friendly version of ProPost:

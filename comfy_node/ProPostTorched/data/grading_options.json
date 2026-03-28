@@ -1,0 +1,27 @@
+{
+  "defaults": {
+    "color_warper_preset": "Custom (manual)",
+    "skin_tone_preset": "Universal - all skin tones"
+  },
+  "color_warper_presets": [
+    "Custom (manual)",
+    "Orange & Teal push",
+    "Skin tone cleanup",
+    "Sky blue intensify",
+    "Green -> teal shift",
+    "Warm color expansion",
+    "Cool color expansion",
+    "Complementary contrast",
+    "Monochromatic squeeze",
+    "Sunset spectrum enhance"
+  ],
+  "skin_tone_presets": [
+    "Universal - all skin tones",
+    "Light / Fair skin",
+    "Medium / Olive skin",
+    "Dark / Deep skin",
+    "Warm / Golden skin",
+    "Cool / Pink skin",
+    "Custom"
+  ]
+}

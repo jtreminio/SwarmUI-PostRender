@@ -1,6 +1,13 @@
 from dataclasses import dataclass
 from typing import Dict
 
+from .catalog_loader import (
+    get_catalog_default,
+    get_catalog_list,
+    validate_catalog_default,
+    validate_catalog_entries,
+)
+
 
 @dataclass(frozen=True)
 class LensProfile:
@@ -181,5 +188,33 @@ for brand_lenses in ALL_PROFILES.values():
     for lens_key, profile in brand_lenses.items():
         LENS_PROFILES_FLAT[lens_key] = profile
 
-LENS_PROFILE_NAMES = sorted(LENS_PROFILES_FLAT.keys())
+LENS_PROFILE_NAMES = validate_catalog_entries(
+    "lens profiles",
+    get_catalog_list("lens_options.json", "lens_profiles"),
+    LENS_PROFILES_FLAT.keys(),
+)
+LENS_PROFILE_DEFAULT = validate_catalog_default(
+    "lens profile",
+    get_catalog_default("lens_options.json", "lens_profile_lens"),
+    LENS_PROFILE_NAMES,
+)
+LENS_PROFILE_MODE_NAMES = get_catalog_list("lens_options.json", "lens_profile_modes")
+LENS_PROFILE_MODE_DEFAULT = validate_catalog_default(
+    "lens profile mode",
+    get_catalog_default("lens_options.json", "lens_profile_mode"),
+    LENS_PROFILE_MODE_NAMES,
+)
+EXPECTED_LENS_PROFILE_MODES = ["Add Aberrations", "Correct Aberrations"]
+if LENS_PROFILE_MODE_NAMES != EXPECTED_LENS_PROFILE_MODES:
+    raise ValueError("Lens profile modes must stay in the Add/Correct order")
+LENS_PROFILE_ADD_MODE = LENS_PROFILE_MODE_NAMES[0]
+LENS_PROFILE_CORRECT_MODE = LENS_PROFILE_MODE_NAMES[1]
+if LENS_PROFILE_MODE_DEFAULT != LENS_PROFILE_ADD_MODE:
+    raise ValueError("Lens profile default must stay on the Add mode entry")
+LENS_DISTORTION_DEFAULT = get_catalog_default("lens_options.json", "lens_distortion_lens")
+if LENS_DISTORTION_DEFAULT != "Custom":
+    raise ValueError("Lens distortion default must stay on Custom")
+CHROMATIC_ABERRATION_DEFAULT = get_catalog_default("lens_options.json", "chromatic_aberration_lens")
+if CHROMATIC_ABERRATION_DEFAULT != "Custom":
+    raise ValueError("Chromatic aberration default must stay on Custom")
 BRAND_NAMES = sorted(ALL_PROFILES.keys())

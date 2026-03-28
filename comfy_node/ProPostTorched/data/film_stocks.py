@@ -1,6 +1,13 @@
 from dataclasses import dataclass
 from typing import Tuple
 
+from .catalog_loader import (
+    get_catalog_default,
+    get_catalog_list,
+    validate_catalog_default,
+    validate_catalog_entries,
+)
+
 
 @dataclass(frozen=True)
 class CurveParams:
@@ -537,7 +544,6 @@ COLOR_STOCKS.update(COLOR_CINEMA)
 COLOR_STOCKS.update(FUJI_CAMERA_SIM)
 COLOR_STOCKS.update(COLOR_INSTANT)
 COLOR_STOCKS.update(COLOR_AGED)
-COLOR_STOCK_NAMES = sorted(COLOR_STOCKS.keys())
 
 
 BW_ILFORD = {
@@ -730,5 +736,33 @@ BW_STOCKS.update(BW_KODAK)
 BW_STOCKS.update(BW_FUJI)
 BW_STOCKS.update(BW_AGFA)
 BW_STOCKS.update(BW_OTHER)
-BW_STOCK_NAMES = sorted(BW_STOCKS.keys())
-FILTER_NAMES = list(COLOR_FILTERS.keys())
+COLOR_STOCK_NAMES = validate_catalog_entries(
+    "color film stocks",
+    get_catalog_list("film_options.json", "color_film_stocks"),
+    COLOR_STOCKS.keys(),
+)
+COLOR_STOCK_DEFAULT = validate_catalog_default(
+    "color film stock",
+    get_catalog_default("film_options.json", "film_stock_color"),
+    COLOR_STOCK_NAMES,
+)
+BW_STOCK_NAMES = validate_catalog_entries(
+    "black-and-white film stocks",
+    get_catalog_list("film_options.json", "bw_film_stocks"),
+    BW_STOCKS.keys(),
+)
+BW_STOCK_DEFAULT = validate_catalog_default(
+    "black-and-white film stock",
+    get_catalog_default("film_options.json", "film_stock_bw"),
+    BW_STOCK_NAMES,
+)
+FILTER_NAMES = validate_catalog_entries(
+    "black-and-white color filters",
+    get_catalog_list("film_options.json", "color_filters"),
+    COLOR_FILTERS.keys(),
+)
+FILTER_DEFAULT = validate_catalog_default(
+    "black-and-white color filter",
+    get_catalog_default("film_options.json", "film_stock_bw_color_filter"),
+    FILTER_NAMES,
+)

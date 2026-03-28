@@ -1,5 +1,11 @@
 from dataclasses import dataclass
 
+from .catalog_loader import (
+    get_catalog_default,
+    get_catalog_list,
+    validate_catalog_default,
+    validate_catalog_entries,
+)
 from .film_stocks import CurveParams
 
 
@@ -62,4 +68,13 @@ PRINT_STOCKS = {
     "Fuji 3510": FUJI_3510,
 }
 
-PRINT_STOCK_NAMES = sorted(PRINT_STOCKS.keys())
+PRINT_STOCK_NAMES = validate_catalog_entries(
+    "print stocks",
+    get_catalog_list("print_options.json", "print_stocks"),
+    PRINT_STOCKS.keys(),
+)
+PRINT_STOCK_DEFAULT = validate_catalog_default(
+    "print stock",
+    get_catalog_default("print_options.json", "print_stock"),
+    PRINT_STOCK_NAMES,
+)

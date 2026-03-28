@@ -1,11 +1,21 @@
 import torch
 from comfy_api.latest import io
 
-from ..data.lens_profiles import LENS_PROFILES_FLAT, LENS_PROFILE_NAMES
+from ..data.lens_profiles import (
+    CHROMATIC_ABERRATION_DEFAULT,
+    LENS_DISTORTION_DEFAULT,
+    LENS_PROFILE_ADD_MODE,
+    LENS_PROFILES_FLAT,
+    LENS_PROFILE_CORRECT_MODE,
+    LENS_PROFILE_DEFAULT,
+    LENS_PROFILE_MODE_DEFAULT,
+    LENS_PROFILE_MODE_NAMES,
+    LENS_PROFILE_NAMES,
+)
 from ..utils import geometry as geometry_utils
 from ..utils import processing as processing_utils
 
-_LENS_WITH_CUSTOM = ["Custom"] + LENS_PROFILE_NAMES
+_LENS_WITH_CUSTOM = [LENS_DISTORTION_DEFAULT] + LENS_PROFILE_NAMES
 
 
 def _sample_reflection_channel(image_4d: torch.Tensor, channel_index: int,
@@ -31,7 +41,7 @@ class ProPostLensDistortion(io.ComfyNode):
             category="Pro Post/Lens",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("lens", options=_LENS_WITH_CUSTOM, default="Custom"),
+                io.Combo.Input("lens", options=_LENS_WITH_CUSTOM, default=LENS_DISTORTION_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=-2.0, max=2.0, step=0.1),
                 io.Float.Input("k1", default=0.0, min=-1.0, max=1.0, step=0.01),
                 io.Float.Input("k2", default=0.0, min=-0.5, max=0.5, step=0.01),
@@ -45,7 +55,7 @@ class ProPostLensDistortion(io.ComfyNode):
     @torch.inference_mode()
     def execute(cls, image: torch.Tensor, lens: str, strength: float,
                 k1: float, k2: float) -> io.NodeOutput:
-        if lens != "Custom" and lens in LENS_PROFILES_FLAT:
+        if lens != LENS_DISTORTION_DEFAULT and lens in LENS_PROFILES_FLAT:
             profile = LENS_PROFILES_FLAT[lens]
             k1 = profile.k1
             k2 = profile.k2
@@ -85,7 +95,7 @@ class ProPostChromaticAberration(io.ComfyNode):
             category="Pro Post/Lens",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("lens", options=_LENS_WITH_CUSTOM, default="Custom"),
+                io.Combo.Input("lens", options=_LENS_WITH_CUSTOM, default=CHROMATIC_ABERRATION_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=0.0, max=3.0, step=0.1),
                 io.Float.Input("shift_r", default=-1.0, min=-5.0, max=5.0, step=0.1),
                 io.Float.Input("shift_b", default=1.0, min=-5.0, max=5.0, step=0.1),
@@ -102,7 +112,7 @@ class ProPostChromaticAberration(io.ComfyNode):
         if strength <= 0.0:
             return io.NodeOutput(image)
 
-        if lens != "Custom" and lens in LENS_PROFILES_FLAT:
+        if lens != CHROMATIC_ABERRATION_DEFAULT and lens in LENS_PROFILES_FLAT:
             profile = LENS_PROFILES_FLAT[lens]
             shift_r = profile.ca_r
             shift_b = profile.ca_b
@@ -136,8 +146,6 @@ class ProPostChromaticAberration(io.ComfyNode):
 
 
 class ProPostLensProfile(io.ComfyNode):
-    _PROFILE_MODES = ["Add Aberrations", "Correct Aberrations"]
-
     @classmethod
     def define_schema(cls) -> io.Schema:
         return io.Schema(
@@ -146,8 +154,8 @@ class ProPostLensProfile(io.ComfyNode):
             category="Pro Post/Lens",
             inputs=[
                 io.Image.Input("image"),
-                io.Combo.Input("lens", options=LENS_PROFILE_NAMES, default=LENS_PROFILE_NAMES[0]),
-                io.Combo.Input("mode", options=cls._PROFILE_MODES, default=cls._PROFILE_MODES[0]),
+                io.Combo.Input("lens", options=LENS_PROFILE_NAMES, default=LENS_PROFILE_DEFAULT),
+                io.Combo.Input("mode", options=LENS_PROFILE_MODE_NAMES, default=LENS_PROFILE_MODE_DEFAULT),
                 io.Float.Input("strength", default=1.0, min=0.0, max=2.0, step=0.1),
             ],
             outputs=[
@@ -162,8 +170,14 @@ class ProPostLensProfile(io.ComfyNode):
         if strength < 0.01 or lens not in LENS_PROFILES_FLAT:
             return io.NodeOutput(image)
 
+        if mode == LENS_PROFILE_ADD_MODE:
+            sign = 1.0
+        elif mode == LENS_PROFILE_CORRECT_MODE:
+            sign = -1.0
+        else:
+            return io.NodeOutput(image)
+
         profile = LENS_PROFILES_FLAT[lens]
-        sign = 1.0 if mode == "Add Aberrations" else -1.0
         k1 = profile.k1 * strength * sign
         k2 = profile.k2 * strength * sign
         ca_r = profile.ca_r * strength * sign
@@ -221,7 +235,7 @@ class ProPostLensProfile(io.ComfyNode):
             cos_theta = 1.0 / torch.sqrt(1.0 + base["r2"])
             falloff = cos_theta.pow(4.0)
             transition = ((base["r"] - vig_midpoint * 0.8) / 0.4).clamp(0.0, 1.0)
-            if mode == "Add Aberrations":
+            if mode == LENS_PROFILE_ADD_MODE:
                 mask = 1.0 - transition * (1.0 - falloff) * vig_strength * 2.0
                 result = result * mask.clamp(0.0, 1.0).unsqueeze(1)
             else:
