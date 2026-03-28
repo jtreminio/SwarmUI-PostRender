@@ -19,7 +19,7 @@ internal sealed class RadialBlurFeature
     private T2IRegisteredParam<float> FocusSpread;
     private T2IRegisteredParam<int> Steps;
 
-    public void RegisterFeature(T2IParamGroup group, ref int featurePriority)
+    public void RegisterFeature(T2IParamGroup group, int featurePriority)
     {
         ComfyUIBackendExtension.NodeToFeatureMap[NodeName] = PostRenderTorchedExtension.FeatureFlag;
         T2IParamTypes.ParameterRemaps["rblurstrength"] = "radialblurstrength";
@@ -37,8 +37,7 @@ internal sealed class RadialBlurFeature
             Parent: group
         );
 
-        featurePriority += 1;
-        int orderCounter = 0;
+        int orderPriority = 0;
 
         Preset = T2IParamTypes.Register<string>(new T2IParamType(
             Name: "Radial Blur Preset",
@@ -54,7 +53,7 @@ internal sealed class RadialBlurFeature
             ],
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Strength = T2IParamTypes.Register<float>(new T2IParamType(
@@ -65,7 +64,7 @@ internal sealed class RadialBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PositionX = T2IParamTypes.Register<float>(new T2IParamType(
@@ -76,7 +75,7 @@ internal sealed class RadialBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PositionY = T2IParamTypes.Register<float>(new T2IParamType(
@@ -87,7 +86,7 @@ internal sealed class RadialBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         FocusSpread = T2IParamTypes.Register<float>(new T2IParamType(
@@ -98,7 +97,7 @@ internal sealed class RadialBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Steps = T2IParamTypes.Register<int>(new T2IParamType(
@@ -109,32 +108,28 @@ internal sealed class RadialBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: radialBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
     }
 
-    public void RegisterWorkflowStep(ref double stepPriorityCtr)
+    public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        WorkflowGenerator.AddStep(g =>
+        if (!g.UserInput.TryGet(Strength, out float strength))
         {
-            if (!g.UserInput.TryGet(Strength, out float strength))
-            {
-                return;
-            }
+            return;
+        }
 
-            ApplyPreset(g);
-            string blurNode = g.CreateNode(NodeName, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["blur_strength"] = strength,
-                ["center_x"] = g.UserInput.Get(PositionX),
-                ["center_y"] = g.UserInput.Get(PositionY),
-                ["focus_spread"] = g.UserInput.Get(FocusSpread),
-                ["steps"] = g.UserInput.Get(Steps),
-            });
-            g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
-        }, stepPriorityCtr);
-        stepPriorityCtr += 0.01f;
+        ApplyPreset(g);
+        string blurNode = g.CreateNode(NodeName, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["blur_strength"] = strength,
+            ["center_x"] = g.UserInput.Get(PositionX),
+            ["center_y"] = g.UserInput.Get(PositionY),
+            ["focus_spread"] = g.UserInput.Get(FocusSpread),
+            ["steps"] = g.UserInput.Get(Steps),
+        });
+        g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
     }
 
     private void ApplyPreset(WorkflowGenerator g)

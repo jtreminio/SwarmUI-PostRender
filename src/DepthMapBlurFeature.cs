@@ -25,7 +25,7 @@ internal sealed class DepthMapBlurFeature
     private T2IRegisteredParam<float> FocalRange;
     private T2IRegisteredParam<int> MaskBlur;
 
-    public void RegisterFeature(T2IParamGroup group, ref int featurePriority)
+    public void RegisterFeature(T2IParamGroup group, int featurePriority)
     {
         ComfyUIBackendExtension.NodeToFeatureMap[NodeName] = PostRenderTorchedExtension.FeatureFlag;
         ComfyUIBackendExtension.NodeToFeatureMap[NodeNameDepthMap] = PostRenderTorchedExtension.FeatureFlag;
@@ -48,8 +48,7 @@ internal sealed class DepthMapBlurFeature
             Parent: group
         );
 
-        featurePriority += 1;
-        int orderCounter = 0;
+        int orderPriority = 0;
 
         Preset = T2IParamTypes.Register<string>(new T2IParamType(
             Name: "Depth Map Blur Preset",
@@ -66,7 +65,7 @@ internal sealed class DepthMapBlurFeature
             ],
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PreProcessorResolution = T2IParamTypes.Register<string>(new T2IParamType(
@@ -76,7 +75,7 @@ internal sealed class DepthMapBlurFeature
             GetValues: _ => ["256", "512", "1024", "2048"],
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PreProcessorModelName = T2IParamTypes.Register<string>(new T2IParamType(
@@ -86,7 +85,7 @@ internal sealed class DepthMapBlurFeature
             GetValues: _ => DepthModels,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         BlurStrength = T2IParamTypes.Register<float>(new T2IParamType(
@@ -97,7 +96,7 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         FocalDepth = T2IParamTypes.Register<float>(new T2IParamType(
@@ -108,7 +107,7 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         FocusSpread = T2IParamTypes.Register<float>(new T2IParamType(
@@ -119,7 +118,7 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Steps = T2IParamTypes.Register<int>(new T2IParamType(
@@ -130,7 +129,7 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         FocalRange = T2IParamTypes.Register<float>(new T2IParamType(
@@ -141,7 +140,7 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         MaskBlur = T2IParamTypes.Register<int>(new T2IParamType(
@@ -152,41 +151,37 @@ internal sealed class DepthMapBlurFeature
             ViewType: ParamViewType.SLIDER,
             Group: depthMapBlurGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
     }
 
-    public void RegisterWorkflowStep(ref double stepPriorityCtr)
+    public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        WorkflowGenerator.AddStep(g =>
+        if (!g.UserInput.TryGet(BlurStrength, out float blurStrength))
         {
-            if (!g.UserInput.TryGet(BlurStrength, out float blurStrength))
-            {
-                return;
-            }
+            return;
+        }
 
-            ApplyPreset(g);
-            string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["resolution"] = int.Parse(g.UserInput.Get(PreProcessorResolution)),
-                ["ckpt_name"] = g.UserInput.Get(PreProcessorModelName),
-            });
-            JArray depthMap = [depthAnything, 0];
-            string blurNode = g.CreateNode(NodeName, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["depth_map"] = depthMap,
-                ["blur_strength"] = blurStrength,
-                ["focal_depth"] = g.UserInput.Get(FocalDepth),
-                ["focus_spread"] = g.UserInput.Get(FocusSpread),
-                ["steps"] = g.UserInput.Get(Steps),
-                ["focal_range"] = g.UserInput.Get(FocalRange),
-                ["mask_blur"] = g.UserInput.Get(MaskBlur),
-            });
-            g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
-        }, stepPriorityCtr);
-        stepPriorityCtr += 0.01f;
+        ApplyPreset(g);
+        string depthAnything = g.CreateNode(NodeNameDepthMap, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["resolution"] = int.Parse(g.UserInput.Get(PreProcessorResolution)),
+            ["ckpt_name"] = g.UserInput.Get(PreProcessorModelName),
+        });
+        JArray depthMap = [depthAnything, 0];
+        string blurNode = g.CreateNode(NodeName, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["depth_map"] = depthMap,
+            ["blur_strength"] = blurStrength,
+            ["focal_depth"] = g.UserInput.Get(FocalDepth),
+            ["focus_spread"] = g.UserInput.Get(FocusSpread),
+            ["steps"] = g.UserInput.Get(Steps),
+            ["focal_range"] = g.UserInput.Get(FocalRange),
+            ["mask_blur"] = g.UserInput.Get(MaskBlur),
+        });
+        g.CurrentMedia = g.CurrentMedia.WithPath([blurNode, 0]);
     }
 
     private void ApplyPreset(WorkflowGenerator g)

@@ -29,7 +29,7 @@ internal sealed class FilmGrainFeature
     private T2IRegisteredParam<float> SourceGamma;
     private T2IRegisteredParam<long> Seed;
 
-    public void RegisterFeature(T2IParamGroup group, ref int featurePriority)
+    public void RegisterFeature(T2IParamGroup group, int featurePriority)
     {
         ComfyUIBackendExtension.NodeToFeatureMap[NodeName] = PostRenderTorchedExtension.FeatureFlag;
         T2IParamTypes.ParameterRemaps["graingrayscale"] = "filmgraingrayscale";
@@ -52,8 +52,7 @@ internal sealed class FilmGrainFeature
             Parent: group
         );
 
-        featurePriority += 1;
-        int orderCounter = 0;
+        int orderPriority = 0;
 
         Preset = T2IParamTypes.Register<string>(new T2IParamType(
             Name: "Film Grain Preset",
@@ -74,7 +73,7 @@ internal sealed class FilmGrainFeature
             ],
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         GrayScale = T2IParamTypes.Register<bool>(new T2IParamType(
@@ -83,7 +82,7 @@ internal sealed class FilmGrainFeature
             Default: "false",
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         GrainType = T2IParamTypes.Register<string>(new T2IParamType(
@@ -93,7 +92,7 @@ internal sealed class FilmGrainFeature
             GetValues: _ => ["Fine", "Fine Simple", "Coarse", "Coarser"],
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         GrainSaturation = T2IParamTypes.Register<float>(new T2IParamType(
@@ -104,7 +103,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         GrainPower = T2IParamTypes.Register<float>(new T2IParamType(
@@ -115,7 +114,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Shadows = T2IParamTypes.Register<float>(new T2IParamType(
@@ -126,7 +125,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Highlights = T2IParamTypes.Register<float>(new T2IParamType(
@@ -137,7 +136,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Scale = T2IParamTypes.Register<float>(new T2IParamType(
@@ -148,7 +147,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Sharpen = T2IParamTypes.Register<int>(new T2IParamType(
@@ -159,7 +158,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         SourceGamma = T2IParamTypes.Register<float>(new T2IParamType(
@@ -170,7 +169,7 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SLIDER,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Seed = T2IParamTypes.Register<long>(new T2IParamType(
@@ -181,37 +180,33 @@ internal sealed class FilmGrainFeature
             ViewType: ParamViewType.SEED,
             Group: grainGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
     }
 
-    public void RegisterWorkflowStep(ref double stepPriorityCtr)
+    public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        WorkflowGenerator.AddStep(g =>
+        if (!g.UserInput.TryGet(GrainType, out string grainType))
         {
-            if (!g.UserInput.TryGet(GrainType, out string grainType))
-            {
-                return;
-            }
+            return;
+        }
 
-            ApplyPreset(g);
-            string filmNode = g.CreateNode(NodeName, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["gray_scale"] = g.UserInput.Get(GrayScale),
-                ["grain_type"] = grainType,
-                ["grain_sat"] = g.UserInput.Get(GrainSaturation),
-                ["grain_power"] = g.UserInput.Get(GrainPower),
-                ["shadows"] = g.UserInput.Get(Shadows),
-                ["highs"] = g.UserInput.Get(Highlights),
-                ["scale"] = g.UserInput.Get(Scale),
-                ["sharpen"] = g.UserInput.Get(Sharpen),
-                ["src_gamma"] = g.UserInput.Get(SourceGamma),
-                ["seed"] = g.UserInput.Get(Seed),
-            });
-            g.CurrentMedia = g.CurrentMedia.WithPath([filmNode, 0]);
-        }, stepPriorityCtr);
-        stepPriorityCtr += 0.01f;
+        ApplyPreset(g);
+        string filmNode = g.CreateNode(NodeName, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["gray_scale"] = g.UserInput.Get(GrayScale),
+            ["grain_type"] = grainType,
+            ["grain_sat"] = g.UserInput.Get(GrainSaturation),
+            ["grain_power"] = g.UserInput.Get(GrainPower),
+            ["shadows"] = g.UserInput.Get(Shadows),
+            ["highs"] = g.UserInput.Get(Highlights),
+            ["scale"] = g.UserInput.Get(Scale),
+            ["sharpen"] = g.UserInput.Get(Sharpen),
+            ["src_gamma"] = g.UserInput.Get(SourceGamma),
+            ["seed"] = g.UserInput.Get(Seed),
+        });
+        g.CurrentMedia = g.CurrentMedia.WithPath([filmNode, 0]);
     }
 
     private void ApplyPreset(WorkflowGenerator g)

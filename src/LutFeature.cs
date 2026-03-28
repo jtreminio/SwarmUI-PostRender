@@ -25,7 +25,7 @@ internal sealed class LutFeature
         ComfyUIBackendExtension.RawObjectInfoParsers.Add(RefreshModelsFromRawObjectInfo);
     }
 
-    public void RegisterFeature(T2IParamGroup group, ref int featurePriority)
+    public void RegisterFeature(T2IParamGroup group, int featurePriority)
     {
         ComfyUIBackendExtension.NodeToFeatureMap[NodeName] = PostRenderTorchedExtension.FeatureFlag;
         T2IParamTypes.ParameterRemaps["lutlutstrength"] = "lutstrength";
@@ -40,8 +40,7 @@ internal sealed class LutFeature
             Parent: group
         );
 
-        featurePriority += 1;
-        int orderCounter = 0;
+        int orderPriority = 0;
 
         Name = T2IParamTypes.Register<string>(new T2IParamType(
             Name: "LUT Name",
@@ -51,7 +50,7 @@ internal sealed class LutFeature
             GetValues: _ => LutModels,
             Group: lutGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Strength = T2IParamTypes.Register<float>(new T2IParamType(
@@ -62,7 +61,7 @@ internal sealed class LutFeature
             ViewType: ParamViewType.SLIDER,
             Group: lutGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         LogSpace = T2IParamTypes.Register<bool>(new T2IParamType(
@@ -72,7 +71,7 @@ internal sealed class LutFeature
             ViewType: ParamViewType.NORMAL,
             Group: lutGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
     }
 
@@ -86,25 +85,21 @@ internal sealed class LutFeature
         RefreshLocalModels();
     }
 
-    public void RegisterWorkflowStep(ref double stepPriorityCtr)
+    public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        WorkflowGenerator.AddStep(g =>
+        if (!g.UserInput.TryGet(Name, out string lutName))
         {
-            if (!g.UserInput.TryGet(Name, out string lutName))
-            {
-                return;
-            }
+            return;
+        }
 
-            string lutNode = g.CreateNode(NodeName, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["lut_name"] = lutName,
-                ["log"] = g.UserInput.Get(LogSpace),
-                ["strength"] = g.UserInput.Get(Strength),
-            });
-            g.CurrentMedia = g.CurrentMedia.WithPath([lutNode, 0]);
-        }, stepPriorityCtr);
-        stepPriorityCtr += 0.01f;
+        string lutNode = g.CreateNode(NodeName, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["lut_name"] = lutName,
+            ["log"] = g.UserInput.Get(LogSpace),
+            ["strength"] = g.UserInput.Get(Strength),
+        });
+        g.CurrentMedia = g.CurrentMedia.WithPath([lutNode, 0]);
     }
 
     private void RefreshLocalModels()

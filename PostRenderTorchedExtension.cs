@@ -8,7 +8,6 @@ namespace PostRenderTorched;
 
 public class PostRenderTorchedExtension : Extension
 {
-    public double StepPriority = 9.9f;
     public const string FeatureFlag = "feature_flag_post_render";
     public static T2IParamGroup PostRenderGroup;
     private readonly FilmGrainFeature FilmGrain = new();
@@ -36,18 +35,25 @@ public class PostRenderTorchedExtension : Extension
         );
 
         int featurePriority = 1;
+        FilmGrain.RegisterFeature(PostRenderGroup, featurePriority);
+        featurePriority += 1;
+        Vignette.RegisterFeature(PostRenderGroup, featurePriority);
+        featurePriority += 1;
+        DepthMapBlur.RegisterFeature(PostRenderGroup, featurePriority);
+        featurePriority += 1;
+        RadialBlur.RegisterFeature(PostRenderGroup, featurePriority);
+        featurePriority += 1;
+        Lut.RegisterFeature(PostRenderGroup, featurePriority);
 
-        FilmGrain.RegisterFeature(PostRenderGroup, ref featurePriority);
-        Vignette.RegisterFeature(PostRenderGroup, ref featurePriority);
-        DepthMapBlur.RegisterFeature(PostRenderGroup, ref featurePriority);
-        RadialBlur.RegisterFeature(PostRenderGroup, ref featurePriority);
-        Lut.RegisterFeature(PostRenderGroup, ref featurePriority);
-
-        StepPriority = 9.9f;
-        FilmGrain.RegisterWorkflowStep(ref StepPriority);
-        Vignette.RegisterWorkflowStep(ref StepPriority);
-        DepthMapBlur.RegisterWorkflowStep(ref StepPriority);
-        RadialBlur.RegisterWorkflowStep(ref StepPriority);
-        Lut.RegisterWorkflowStep(ref StepPriority);
+        double stepPriority = 9.9f;
+        WorkflowGenerator.AddStep(FilmGrain.RegisterWorkflowStep, stepPriority);
+        stepPriority += 0.01f;
+        WorkflowGenerator.AddStep(Vignette.RegisterWorkflowStep, stepPriority);
+        stepPriority += 0.01f;
+        WorkflowGenerator.AddStep(DepthMapBlur.RegisterWorkflowStep, stepPriority);
+        stepPriority += 0.01f;
+        WorkflowGenerator.AddStep(RadialBlur.RegisterWorkflowStep, stepPriority);
+        stepPriority += 0.01f;
+        WorkflowGenerator.AddStep(Lut.RegisterWorkflowStep, stepPriority);
     }
 }

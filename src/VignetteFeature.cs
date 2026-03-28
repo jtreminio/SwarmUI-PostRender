@@ -17,7 +17,7 @@ internal sealed class VignetteFeature
     private T2IRegisteredParam<float> PositionX;
     private T2IRegisteredParam<float> PositionY;
 
-    public void RegisterFeature(T2IParamGroup group, ref int featurePriority)
+    public void RegisterFeature(T2IParamGroup group, int featurePriority)
     {
         ComfyUIBackendExtension.NodeToFeatureMap[NodeName] = PostRenderTorchedExtension.FeatureFlag;
         T2IParamTypes.ParameterRemaps["vigvignettestrength"] = "vignettestrength";
@@ -33,8 +33,7 @@ internal sealed class VignetteFeature
             Parent: group
         );
 
-        featurePriority += 1;
-        int orderCounter = 0;
+        int orderPriority = 0;
 
         Preset = T2IParamTypes.Register<string>(new T2IParamType(
             Name: "Vignette Preset",
@@ -50,7 +49,7 @@ internal sealed class VignetteFeature
             ],
             Group: vignetteGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         Strength = T2IParamTypes.Register<float>(new T2IParamType(
@@ -61,7 +60,7 @@ internal sealed class VignetteFeature
             ViewType: ParamViewType.SLIDER,
             Group: vignetteGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PositionX = T2IParamTypes.Register<float>(new T2IParamType(
@@ -72,7 +71,7 @@ internal sealed class VignetteFeature
             ViewType: ParamViewType.SLIDER,
             Group: vignetteGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
 
         PositionY = T2IParamTypes.Register<float>(new T2IParamType(
@@ -83,30 +82,26 @@ internal sealed class VignetteFeature
             ViewType: ParamViewType.SLIDER,
             Group: vignetteGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
-            OrderPriority: orderCounter++
+            OrderPriority: orderPriority++
         ));
     }
 
-    public void RegisterWorkflowStep(ref double stepPriorityCtr)
+    public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        WorkflowGenerator.AddStep(g =>
+        if (!g.UserInput.TryGet(Strength, out float strength))
         {
-            if (!g.UserInput.TryGet(Strength, out float strength))
-            {
-                return;
-            }
+            return;
+        }
 
-            ApplyPreset(g);
-            string vignetteNode = g.CreateNode(NodeName, new JObject
-            {
-                ["image"] = g.CurrentMedia.Path,
-                ["intensity"] = strength,
-                ["center_x"] = g.UserInput.Get(PositionX),
-                ["center_y"] = g.UserInput.Get(PositionY),
-            });
-            g.CurrentMedia = g.CurrentMedia.WithPath([vignetteNode, 0]);
-        }, stepPriorityCtr);
-        stepPriorityCtr += 0.01f;
+        ApplyPreset(g);
+        string vignetteNode = g.CreateNode(NodeName, new JObject
+        {
+            ["image"] = g.CurrentMedia.Path,
+            ["intensity"] = strength,
+            ["center_x"] = g.UserInput.Get(PositionX),
+            ["center_y"] = g.UserInput.Get(PositionY),
+        });
+        g.CurrentMedia = g.CurrentMedia.WithPath([vignetteNode, 0]);
     }
 
     private void ApplyPreset(WorkflowGenerator g)
