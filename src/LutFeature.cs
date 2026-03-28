@@ -57,7 +57,7 @@ internal sealed class LutFeature
             Name: "LUT Strength",
             Description: "The strength of the LUT effect",
             Default: "1.0",
-            Min: 0.0, Max: 1.0, Step: 0.01,
+            Min: 0.0, Max: 1.0, Step: 0.1,
             ViewType: ParamViewType.SLIDER,
             Group: lutGroup,
             FeatureFlag: PostRenderTorchedExtension.FeatureFlag,
