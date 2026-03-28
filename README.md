@@ -1,8 +1,22 @@
 # SwarmUI-PostRenderTorched
 
-A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost Torched](https://github.com/digitaljohn/comfyui-propost/).
+A [SwarmUI](https://github.com/mcmonkeyprojects/SwarmUI/) extension that adds parameters for [ProPost](https://github.com/digitaljohn/comfyui-propost/).
 
 This version is a fork of [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender), refactored to be Torch-driven instead of CPU-driven. Benchmarks show a significant reduction in generation time penalty - while not literally free, using this extension is the closest to "free" as anything in computers can get.
+
+# Additional Functionality
+
+Additional functionality not present in the original comfyu-propost extension include:
+
+* Original credit to Jeremie Louvaert from https://github.com/jeremieLouvaert/ComfyUI-Darkroom - MIT License
+    * Print Stock
+    * Film Stock (B&W)
+    * Film Stock (Color)
+    * Lens Profile
+    * Lens Distortion
+    * Color Warper
+    * Skin Tone Uniformity
+    * Chromatic Aberration
 
 # Benefits over original [HellerCommaA/SwarmUI-PostRender](https://github.com/HellerCommaA/SwarmUI-PostRender)
 
