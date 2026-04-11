@@ -88,7 +88,7 @@ internal sealed class VignetteFeature
 
     public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        if (!g.UserInput.TryGet(Strength, out float strength))
+        if (!g.UserInput.TryGet(Strength, out _))
         {
             return;
         }
@@ -97,7 +97,7 @@ internal sealed class VignetteFeature
         string vignetteNode = g.CreateNode(NodeName, new JObject
         {
             ["image"] = g.CurrentMedia.Path,
-            ["intensity"] = strength,
+            ["intensity"] = g.UserInput.Get(Strength),
             ["center_x"] = g.UserInput.Get(PositionX),
             ["center_y"] = g.UserInput.Get(PositionY),
         });

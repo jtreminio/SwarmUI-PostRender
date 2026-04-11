@@ -1,3 +1,5 @@
+AGENTS.dev.md
+
 # C# and related tools
 bin/
 obj/
@@ -11,7 +13,6 @@ Properties/
 .aspnet/
 .local/
 **/Directory.Build.local.props
-__pycache__
 
 # Node / TypeScript
 node_modules/

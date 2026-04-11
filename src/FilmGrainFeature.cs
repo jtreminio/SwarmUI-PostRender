@@ -186,7 +186,7 @@ internal sealed class FilmGrainFeature
 
     public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        if (!g.UserInput.TryGet(GrainType, out string grainType))
+        if (!g.UserInput.TryGet(GrainType, out _))
         {
             return;
         }
@@ -196,7 +196,7 @@ internal sealed class FilmGrainFeature
         {
             ["image"] = g.CurrentMedia.Path,
             ["gray_scale"] = g.UserInput.Get(GrayScale),
-            ["grain_type"] = grainType,
+            ["grain_type"] = g.UserInput.Get(GrainType),
             ["grain_sat"] = g.UserInput.Get(GrainSaturation),
             ["grain_power"] = g.UserInput.Get(GrainPower),
             ["shadows"] = g.UserInput.Get(Shadows),

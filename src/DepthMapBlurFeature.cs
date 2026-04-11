@@ -157,7 +157,7 @@ internal sealed class DepthMapBlurFeature
 
     public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        if (!g.UserInput.TryGet(BlurStrength, out float blurStrength))
+        if (!g.UserInput.TryGet(BlurStrength, out _))
         {
             return;
         }
@@ -174,7 +174,7 @@ internal sealed class DepthMapBlurFeature
         {
             ["image"] = g.CurrentMedia.Path,
             ["depth_map"] = depthMap,
-            ["blur_strength"] = blurStrength,
+            ["blur_strength"] = g.UserInput.Get(BlurStrength),
             ["focal_depth"] = g.UserInput.Get(FocalDepth),
             ["focus_spread"] = g.UserInput.Get(FocusSpread),
             ["steps"] = g.UserInput.Get(Steps),

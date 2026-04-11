@@ -114,7 +114,7 @@ internal sealed class RadialBlurFeature
 
     public void RegisterWorkflowStep(WorkflowGenerator g)
     {
-        if (!g.UserInput.TryGet(Strength, out float strength))
+        if (!g.UserInput.TryGet(Strength, out _))
         {
             return;
         }
@@ -123,7 +123,7 @@ internal sealed class RadialBlurFeature
         string blurNode = g.CreateNode(NodeName, new JObject
         {
             ["image"] = g.CurrentMedia.Path,
-            ["blur_strength"] = strength,
+            ["blur_strength"] = g.UserInput.Get(Strength),
             ["center_x"] = g.UserInput.Get(PositionX),
             ["center_y"] = g.UserInput.Get(PositionY),
             ["focus_spread"] = g.UserInput.Get(FocusSpread),
